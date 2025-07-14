@@ -43,11 +43,16 @@ public class OrderController {
     }
 
     @GetMapping
-    public ResponseEntity<List<OrderDetailResponse>> getOrdersByUser(HttpServletRequest request) {
+    public ResponseEntity<Page<OrderDetailResponse>> getOrdersByUser(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
         int userId = extractUserIdFromRequest(request);
-        List<OrderDetailResponse> orders = orderService.getOrdersByUserId(userId);
+        Page<OrderDetailResponse> orders = orderService.getOrdersByUserId(userId, page, size);
         return ResponseEntity.ok(orders);
     }
+
 
     @PutMapping("/cancel/{orderId}")
     public ResponseEntity<String> cancelOrder(HttpServletRequest request, @PathVariable int orderId) {
@@ -84,5 +89,11 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("{orderId}")
+    public ResponseEntity<OrderDetailResponse> getOrderDetail(@PathVariable int orderId, HttpServletRequest request) {
+        int userId = extractUserIdFromRequest(request);
+        OrderDetailResponse response = orderService.getOrderById(orderId, userId);
+        return ResponseEntity.ok(response);
+    }
 
 }

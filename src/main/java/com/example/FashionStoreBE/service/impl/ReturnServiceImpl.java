@@ -9,10 +9,8 @@ import com.example.FashionStoreBE.model.ChiTietDonHang;
 import com.example.FashionStoreBE.model.DonHang;
 import com.example.FashionStoreBE.model.PhieuDoiTra;
 import com.example.FashionStoreBE.repository.*;
-import com.example.FashionStoreBE.service.EmailService;
 import com.example.FashionStoreBE.service.ReturnService;
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,10 +38,10 @@ public class ReturnServiceImpl implements ReturnService {
         }
 
         // ✅ Kiểm tra nếu quá 7 ngày
-        LocalDateTime ngayDatHang = donHang.getNgayTao();
+        LocalDateTime ngayGiaoHang = donHang.getNgayGiao();
         LocalDateTime ngayHienTai = LocalDateTime.now();
 
-        if (ngayDatHang.plusDays(7).isBefore(ngayHienTai)) {
+        if (ngayGiaoHang.plusDays(7).isBefore(ngayHienTai)) {
             throw new ApiException("Đơn hàng đã quá hạn đổi/trả (7 ngày).");
         }
         if (donHang.isCoYeuCauDoiTra()) {

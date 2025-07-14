@@ -3,6 +3,8 @@ package com.example.FashionStoreBE.service.impl;
 import com.example.FashionStoreBE.config.VNPayConfig;
 import com.example.FashionStoreBE.dto.request.GuestOrderRequest;
 import com.example.FashionStoreBE.dto.response.OrderDetailResponse;
+import com.example.FashionStoreBE.exception.ApiException;
+import com.example.FashionStoreBE.exception.ForbidenExceeption;
 import com.example.FashionStoreBE.exception.ResourceNotFoundException;
 import com.example.FashionStoreBE.model.*;
 import com.example.FashionStoreBE.repository.*;
@@ -11,23 +13,15 @@ import com.example.FashionStoreBE.service.OrderService;
 import com.example.FashionStoreBE.service.VNPayService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.jsonwebtoken.io.IOException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -172,6 +166,7 @@ public class OrderServiceImpl implements OrderService {
         donHang.setNgayTao(LocalDateTime.now());
         donHang.setNgayCapNhat(LocalDateTime.now());
         donHang.setTrangThai("CHO_XAC_NHAN");
+        donHang.setCoThanhToan(false);
 
         // Địa chỉ giao hàng
         donHang.setDuong(request.getDuong());
@@ -237,11 +232,13 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public List<OrderDetailResponse> getOrdersByUserId(int userId) {
-        List<DonHang> donHangs = donHangRepo.findByKhachHang_MaKhachHang(userId);
+    public Page<OrderDetailResponse> getOrdersByUserId(int userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
+        Page<DonHang> donHangPage = donHangRepo.findByKhachHang_MaKhachHang(userId, pageable);
+
         List<OrderDetailResponse> result = new ArrayList<>();
 
-        for (DonHang donHang : donHangs) {
+        for (DonHang donHang : donHangPage.getContent()) {
             String diaChi = donHang.getDuong() + ", " +
                     donHang.getXa() + ", " +
                     donHang.getHuyen() + ", " +
@@ -264,30 +261,32 @@ public class OrderServiceImpl implements OrderService {
                 dto.setDonGia(chiTiet.getDonGia());
                 dto.setSoLuong(chiTiet.getSoLuong());
                 dto.setNgayTao(donHang.getNgayTao());
+                dto.setNgayGiao(donHang.getNgayGiao());
                 dto.setTrangThai(donHang.getTrangThai());
+                dto.setCoThanhToan(donHang.isCoThanhToan());
                 dto.setCoYeuCauDoiTra(donHang.isCoYeuCauDoiTra());
                 result.add(dto);
             }
         }
 
-        return result;
+        return new PageImpl<>(result, pageable, donHangPage.getTotalElements());
     }
+
 
 
     @Override
     @Transactional
     public String cancelOrder(int userId, int orderId) {
         DonHang donHang = donHangRepo.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         // Kiểm tra người dùng sở hữu đơn
         if (donHang.getKhachHang() == null || donHang.getKhachHang().getMaKhachHang() != userId) {
-            throw new RuntimeException("Bạn không có quyền hủy đơn hàng này.");
+            throw new AccessDeniedException("Bạn không có quyền hủy đơn hàng này.");
         }
 
-        // Chỉ được hủy khi đang chờ xác nhận
-        if (!"CHO_XAC_NHAN".equals(donHang.getTrangThai())) {
-            throw new RuntimeException("Chỉ được hủy đơn hàng khi đang ở trạng thái CHO_XAC_NHAN.");
+        if (!"CHO_XAC_NHAN".equals(donHang.getTrangThai()) && !"DA_THANH_TOAN".equals(donHang.getTrangThai())) {
+            throw new ApiException("Chỉ được hủy đơn hàng khi đang ở trạng thái CHO_XAC_NHAN hoặc DA_THANH_TOAN.");
         }
 
         donHang.setTrangThai("DA_HUY");
@@ -328,7 +327,9 @@ public class OrderServiceImpl implements OrderService {
                 dto.setDonGia(chiTiet.getDonGia());
                 dto.setSoLuong(chiTiet.getSoLuong());
                 dto.setNgayTao(donHang.getNgayTao());
+                dto.setNgayGiao(donHang.getNgayGiao());
                 dto.setTrangThai(donHang.getTrangThai());
+                dto.setCoThanhToan(donHang.isCoThanhToan());
                 dto.setCoYeuCauDoiTra(donHang.isCoYeuCauDoiTra());
                 result.add(dto);
             }
@@ -342,6 +343,10 @@ public class OrderServiceImpl implements OrderService {
     public void updateOrderStatus(int orderId, String newStatus) {
         DonHang donHang = donHangRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        if (newStatus.equals("DA_GIAO")){
+            donHang.setNgayGiao(LocalDateTime.now());
+        }
 
         donHang.setTrangThai(newStatus);
         donHang.setNgayCapNhat(LocalDateTime.now());
@@ -386,8 +391,10 @@ public class OrderServiceImpl implements OrderService {
                 dto.setDonGia(chiTiet.getDonGia());
                 dto.setSoLuong(chiTiet.getSoLuong());
                 dto.setNgayTao(donHang.getNgayTao());
+                dto.setNgayGiao(donHang.getNgayGiao());
                 dto.setTrangThai(donHang.getTrangThai());
-
+                dto.setCoThanhToan(donHang.isCoThanhToan());
+                dto.setCoYeuCauDoiTra(donHang.isCoYeuCauDoiTra());
                 result.add(dto);
             }
 
@@ -395,5 +402,50 @@ public class OrderServiceImpl implements OrderService {
         }
         return new PageImpl<>(result, pageable, donHangPage.getTotalElements());
     }
+
+    @Override
+    public OrderDetailResponse getOrderById(int orderId, int userId) {
+        DonHang donHang = donHangRepo.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        if (donHang.getKhachHang() == null || donHang.getKhachHang().getMaKhachHang() != userId) {
+            throw new AccessDeniedException("Bạn không có quyền truy cập đơn hàng này.");
+        }
+
+        String diaChi = donHang.getDuong() + ", " +
+                donHang.getXa() + ", " +
+                donHang.getHuyen() + ", " +
+                donHang.getTinh();
+
+        // Trả về thông tin của sản phẩm đầu tiên trong đơn (vì đang dùng OrderDetailResponse 1 sản phẩm)
+        ChiTietDonHang chiTiet = donHang.getChiTietDonHangs().stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("Đơn hàng không có sản phẩm"));
+
+        ChiTietSanPham ctsp = chiTiet.getChiTietSanPham();
+        SanPham sp = ctsp.getSanPham();
+
+        OrderDetailResponse dto = new OrderDetailResponse();
+        dto.setMaDonHang(donHang.getMaDonHang());
+        dto.setTenNguoiNhan(donHang.getTenNguoiNhan());
+        dto.setSoDienThoai(donHang.getSoDienThoaiNguoiNhan());
+        dto.setDiaChi(diaChi);
+        dto.setMaSanPham(sp.getMaSanPham());
+        dto.setTenSanPham(sp.getTensp());
+
+        List<String> hinhAnhList = sp.getHinhAnh();
+        dto.setHinhAnh(hinhAnhList != null && !hinhAnhList.isEmpty() ? hinhAnhList.get(0) : null);
+        dto.setKichCo(ctsp.getKichCo().getTenKichCo());
+        dto.setMauSac(ctsp.getMauSac().getTenMau());
+        dto.setDonGia(chiTiet.getDonGia());
+        dto.setSoLuong(chiTiet.getSoLuong());
+        dto.setNgayTao(donHang.getNgayTao());
+        dto.setNgayGiao(donHang.getNgayGiao());
+        dto.setTrangThai(donHang.getTrangThai());
+        dto.setCoThanhToan(donHang.isCoThanhToan());
+        dto.setCoYeuCauDoiTra(donHang.isCoYeuCauDoiTra());
+
+        return dto;
+    }
+
 
 }

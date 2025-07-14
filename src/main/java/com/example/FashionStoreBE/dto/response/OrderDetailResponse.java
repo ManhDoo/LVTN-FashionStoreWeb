@@ -18,10 +18,14 @@ public class OrderDetailResponse {
     private int maSanPham;
     private String tenSanPham;
     private String hinhAnh;
+    private String kichCo;
+    private String mauSac;
     private double donGia;
     private int soLuong;
     private LocalDateTime ngayTao;
+    private LocalDateTime ngayGiao;
     private String trangThai;
 
+    private boolean coThanhToan;
     private boolean coYeuCauDoiTra;
 }
