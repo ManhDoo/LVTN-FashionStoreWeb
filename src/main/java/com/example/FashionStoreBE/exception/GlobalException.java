@@ -25,6 +25,12 @@ public class GlobalException {
         return new ResponseEntity<>(err, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(ForbidenExceeption.class)
+    public ResponseEntity<ErrorDetail> handleForbiddenException(ApiException e, WebRequest req) {
+        ErrorDetail err = new ErrorDetail(e.getMessage(), req.getDescription(false), LocalDateTime.now());
+        return new ResponseEntity<>(err, HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(ProductDeleteException.class)
     public ResponseEntity<ErrorDetail> handleProductDeleteException(ProductDeleteException e, WebRequest req) {
         ErrorDetail err = new ErrorDetail(e.getMessage(), req.getDescription(false), LocalDateTime.now());

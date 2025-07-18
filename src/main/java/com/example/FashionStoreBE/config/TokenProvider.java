@@ -25,7 +25,8 @@ public class TokenProvider {
         String role = "ROLE_" + user.getQuyen();
 
         String jwt = Jwts.builder().setIssuer("Code with Manh")
-                .setIssuedAt(new Date()).setExpiration(new Date(new Date().getTime() + 86400000))
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000))
                 .claim("email", user.getEmail())
                 .claim("id", user.getMaKhachHang())       // ✅ thêm id
                 .claim("role", role)           // ✅ thêm role

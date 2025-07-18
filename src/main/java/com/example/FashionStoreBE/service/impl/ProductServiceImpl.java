@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -33,6 +34,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private SizeRepository sizeRepository;
+
+    @Autowired
+    private ColorProductRepository colorProductRepository;
 
 
     @Override
@@ -171,51 +175,70 @@ public class ProductServiceImpl implements ProductService {
         // Tìm sản phẩm hiện có
         SanPham existingProduct = getProductById(id);
 
-        // Cập nhật thông tin sản phẩm
-        existingProduct.setTensp(sanPham.getTensp());
-        existingProduct.setHinhAnh(sanPham.getHinhAnh());
-        existingProduct.setGiaGoc(sanPham.getGiaGoc());
-        existingProduct.setMoTa(sanPham.getMoTa());
-        existingProduct.setDanhMuc(sanPham.getDanhMuc());
-        existingProduct.setKhuyenMai(sanPham.getKhuyenMai());
+        // Không cho phép cập nhật các thông tin chính của sản phẩm
+        // Chỉ giữ lại thời gian cập nhật
         existingProduct.setNgayCapNhat(LocalDateTime.now());
-
-        // Lưu cập nhật sản phẩm
         SanPham updatedProduct = productRepository.save(existingProduct);
 
-        // Lấy chi tiết hiện có
-        List<ChiTietSanPham> chiTietList = productDetailRopository.findBySanPham(existingProduct);
+        // Lấy danh sách chi tiết sản phẩm hiện có
+        List<ChiTietSanPham> existingDetails = productDetailRopository.findBySanPham(existingProduct);
 
-        // Kiểm tra xem có chi tiết nào đã nằm trong đơn hàng không
-        for (ChiTietSanPham chiTiet : chiTietList) {
+        // Tạo map để so sánh chi tiết sản phẩm theo maMau và maKichCo
+        Map<String, ChiTietSanPham> existingDetailsMap = existingDetails.stream()
+                .collect(Collectors.toMap(
+                        detail -> detail.getMauSac().getMaMau() + "-" + detail.getKichCo().getMaKichCo(),
+                        detail -> detail
+                ));
+
+        // Kiểm tra xem các chi tiết sản phẩm hiện có có nằm trong đơn hàng không
+        for (ChiTietSanPham chiTiet : existingDetails) {
             boolean isInOrder = productDetailRopository.existsInChiTietDonHangByChiTietSanPham(chiTiet.getId());
-            if (isInOrder) {
-                throw new ProductDeleteException("Không thể cập nhật sản phẩm vì một số chi tiết đã nằm trong đơn hàng");
+            if (isInOrder && chiTietSanPhamDTOs.stream().noneMatch(dto ->
+                    dto.getMaMau() == chiTiet.getMauSac().getMaMau() &&
+                            dto.getMaKichCo() == chiTiet.getKichCo().getMaKichCo())) {
+                throw new ProductDeleteException("Không thể xóa chi tiết sản phẩm vì nó đang tồn tại trong đơn hàng");
             }
         }
 
-        // Xoá chi tiết cũ
-        productDetailRopository.deleteAll(chiTietList);
-
-        // Tạo lại chi tiết sản phẩm mới từ DTO
+        // Xử lý danh sách chi tiết sản phẩm mới
         for (ProductDetailRequest dto : chiTietSanPhamDTOs) {
-            ChiTietSanPham chiTiet = new ChiTietSanPham();
-            chiTiet.setSanPham(updatedProduct);
+            String key = dto.getMaMau() + "-" + dto.getMaKichCo();
+            ChiTietSanPham existingDetail = existingDetailsMap.get(key);
 
-            KichCo kichCo = sizeRepository.findById(dto.getMaKichCo())
-                    .orElseThrow(() -> new IllegalArgumentException("Kích cỡ không tồn tại: " + dto.getMaKichCo()));
-            chiTiet.setKichCo(kichCo);
+            if (existingDetail != null) {
+                // Cập nhật tồn kho cho chi tiết sản phẩm hiện có
+                existingDetail.setTonKho(dto.getTonKho());
+                productDetailRopository.save(existingDetail);
+                existingDetailsMap.remove(key); // Xóa khỏi map để không xóa sau này
+            } else {
+                // Thêm mới chi tiết sản phẩm
+                ChiTietSanPham newDetail = new ChiTietSanPham();
+                newDetail.setSanPham(updatedProduct);
 
-            MauSac mauSac = colorRepository.findById(dto.getMaMau())
-                    .orElseThrow(() -> new IllegalArgumentException("Màu sắc không tồn tại: " + dto.getMaMau()));
-            chiTiet.setMauSac(mauSac);
+                KichCo kichCo = sizeRepository.findById(dto.getMaKichCo())
+                        .orElseThrow(() -> new IllegalArgumentException("Kích cỡ không tồn tại: " + dto.getMaKichCo()));
+                newDetail.setKichCo(kichCo);
 
-            chiTiet.setHinhAnh(dto.getHinhAnh());
-            chiTiet.setGiaThem(dto.getGiaThem());
-            chiTiet.setTonKho(dto.getTonKho());
+                MauSac mauSac = colorRepository.findById(dto.getMaMau())
+                        .orElseThrow(() -> new IllegalArgumentException("Màu sắc không tồn tại: " + dto.getMaMau()));
+                newDetail.setMauSac(mauSac);
 
-            productDetailRopository.save(chiTiet);
+                newDetail.setHinhAnh(dto.getHinhAnh());
+                newDetail.setGiaThem(dto.getGiaThem());
+                newDetail.setTonKho(dto.getTonKho());
+
+                productDetailRopository.save(newDetail);
+            }
         }
+
+        // Xóa các chi tiết sản phẩm không còn trong danh sách DTO
+//        for (ChiTietSanPham detailToDelete : existingDetailsMap.values()) {
+//            boolean isInOrder = productDetailRopository.existsInChiTietDonHangByChiTietSanPham(detailToDelete.getId());
+//            if (isInOrder) {
+//                throw new ProductDeleteException("Không thể xóa chi tiết sản phẩm vì nó đang tồn tại trong đơn hàng");
+//            }
+//            productDetailRopository.delete(detailToDelete);
+//        }
 
         return updatedProduct;
     }

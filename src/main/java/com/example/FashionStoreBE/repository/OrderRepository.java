@@ -13,5 +13,6 @@ public interface OrderRepository extends JpaRepository<DonHang, Integer> {
 
     Page<DonHang> findByTrangThai(String trangThai, Pageable pageable);
 
+    Page<DonHang> findByKhachHang_MaKhachHang(int maKhachHang, Pageable pageable);
 
 }

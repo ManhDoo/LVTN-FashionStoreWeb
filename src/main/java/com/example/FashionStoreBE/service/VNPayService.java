@@ -126,7 +126,7 @@ public class VNPayService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy đơn hàng với ID: " + orderId));
 
         if ("00".equals(vnp_ResponseCode)) {
-            donHang.setTrangThai("DA_THANH_TOAN");
+            donHang.setCoThanhToan(true);
             donHang.setNgayCapNhat(LocalDateTime.now());
             donHangRepo.save(donHang);
             logger.info("Payment successful for order ID: {}", orderId);
@@ -144,11 +144,10 @@ public class VNPayService {
             String redirectUrl = "http://localhost:5173/vnpay-return?status=success&orderId=" + orderId;
             response.sendRedirect(redirectUrl);
         } else {
-            donHang.setTrangThai("THANH_TOAN_THAT_BAI");
+            donHang.setCoThanhToan(false);
             donHang.setNgayCapNhat(LocalDateTime.now());
             donHangRepo.save(donHang);
-            logger.error("Payment failed for order ID: {}, response code: {}", orderId, vnp_ResponseCode);
-            String redirectUrl = "http://localhost:5173/vnpay-return?status=failure&orderId=" + orderId + "&message=Thanh toán thất bại. Mã lỗi: " + vnp_ResponseCode;
+            String redirectUrl = "http://localhost:5173/vnpay-return?status=failure&orderId=" + orderId;
             response.sendRedirect(redirectUrl);
         }
     }

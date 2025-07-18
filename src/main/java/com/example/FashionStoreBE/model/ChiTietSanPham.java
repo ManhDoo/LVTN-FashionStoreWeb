@@ -33,7 +33,7 @@ public class ChiTietSanPham {
     private double giaThem;
     private int tonKho;
 
-//    @ManyToOne
-//    private SanPhamMauSac sanPhamMauSac;
+    @ManyToOne
+    private SanPhamMauSac sanPhamMauSac;
 
 }

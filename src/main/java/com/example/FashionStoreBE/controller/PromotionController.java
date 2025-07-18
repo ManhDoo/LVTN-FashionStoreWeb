@@ -40,4 +40,10 @@ public class PromotionController {
         List<SanPham> products = promotionService.getAllProductPromotion();
         return ResponseEntity.ok(products);
     }
+
+    @GetMapping
+    public ResponseEntity<List<KhuyenMai>> getAllPromotions() {
+        List<KhuyenMai> products = promotionService.getAllPromotions();
+        return ResponseEntity.ok(products);
+    }
 }

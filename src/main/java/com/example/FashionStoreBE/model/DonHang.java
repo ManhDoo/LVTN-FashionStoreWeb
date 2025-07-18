@@ -29,6 +29,7 @@ public class DonHang {
     private String tinh;
     private LocalDateTime ngayTao;
     private LocalDateTime ngayCapNhat;
+    private LocalDateTime ngayGiao;
     private String trangThai;
 
     @ManyToOne
@@ -40,6 +41,7 @@ public class DonHang {
     @OneToMany(mappedBy = "donDatHang", cascade = CascadeType.ALL)
     private List<ChiTietDonHang> chiTietDonHangs;
 
+    private boolean coThanhToan;
     private boolean coYeuCauDoiTra;
 
 }

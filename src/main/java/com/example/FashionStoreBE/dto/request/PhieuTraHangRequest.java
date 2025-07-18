@@ -14,6 +14,7 @@ public class PhieuTraHangRequest {
     @Data
     public static class Item {
         private int chiTietDonHangId;
+        private List<String> hinhAnh;
         private int soLuong;
         private String lyDoChiTiet;
     }

@@ -1,23 +1,13 @@
 package com.example.FashionStoreBE.service.impl;
 
-import com.example.FashionStoreBE.dto.response.ProductColorGroupResponse;
-import com.example.FashionStoreBE.dto.response.ProductDetailResponse;
-import com.example.FashionStoreBE.dto.response.ProductSizeResponse;
-import com.example.FashionStoreBE.dto.response.PromotionResponse;
-import com.example.FashionStoreBE.exception.ResourceNotFoundException;
 import com.example.FashionStoreBE.model.ChiTietSanPham;
-import com.example.FashionStoreBE.model.KhuyenMai;
-import com.example.FashionStoreBE.model.SanPham;
 import com.example.FashionStoreBE.repository.ProductDetailRopository;
 import com.example.FashionStoreBE.repository.ProductRepository;
 import com.example.FashionStoreBE.service.ProductDetailService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+
 
 @Service
 public class ProductDetailServiceImpl implements ProductDetailService {

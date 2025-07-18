@@ -7,6 +7,7 @@ import com.example.FashionStoreBE.repository.ProductRepository;
 import com.example.FashionStoreBE.repository.PromotionRepository;
 import com.example.FashionStoreBE.service.PromotionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -49,4 +50,23 @@ public class PromotionServiceImpl implements PromotionService {
     public List<SanPham> getAllProductPromotion() {
         return productRepository.findByKhuyenMaiIsNotNull();
     }
+
+    @Override
+    public List<KhuyenMai> getAllPromotions() {
+        return promotionRepository.findAll();
+    }
+
+    @Scheduled(fixedRate = 3600000) // Mỗi 1 giờ kiểm tra (3600000 ms)
+    public void capNhatTrangThaiKhuyenMaiHetHan() {
+        LocalDateTime now = LocalDateTime.now();
+        List<KhuyenMai> ds = promotionRepository.findAll();
+
+        for (KhuyenMai km : ds) {
+            if (km.getNgayKetThuc().isBefore(now) && !"Đã kết thúc".equalsIgnoreCase(km.getTrangThai())) {
+                km.setTrangThai("Đã kết thúc");
+                promotionRepository.save(km);
+            }
+        }
+    }
+
 }

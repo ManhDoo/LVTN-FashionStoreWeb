@@ -10,4 +10,5 @@ public interface PromotionService {
     KhuyenMai createPromotion(PromotionRequest request);
     SanPham ganSanPhamVaoKhuyenMai(int maSanPham, int maKhuyenMai);
     List<SanPham> getAllProductPromotion();
+    List<KhuyenMai> getAllPromotions();
 }

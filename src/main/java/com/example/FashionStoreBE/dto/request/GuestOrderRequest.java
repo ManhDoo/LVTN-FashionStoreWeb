@@ -15,6 +15,7 @@ public class GuestOrderRequest {
     private String xa;
     private String huyen;
     private String tinh;
+    private double phiGiaoHang;
     private List<GioHang> cart;
     private int pttt;
 }
