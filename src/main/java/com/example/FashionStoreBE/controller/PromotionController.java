@@ -35,6 +35,14 @@ public class PromotionController {
         return ResponseEntity.ok(promotionService.ganSanPhamVaoKhuyenMai(maSanPham, maKhuyenMai));
     }
 
+    @PutMapping("/go-khuyen-mai/{maSanPham}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<SanPham> goBoKhuyenMai(@PathVariable int maSanPham) {
+        SanPham sp = promotionService.goBoKhuyenMaiKhoiSanPham(maSanPham);
+        return ResponseEntity.ok(sp);
+    }
+
+
     @GetMapping("/product")
     public ResponseEntity<List<SanPham>> getAllPromotionProducts() {
         List<SanPham> products = promotionService.getAllProductPromotion();

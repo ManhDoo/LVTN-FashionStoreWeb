@@ -7,32 +7,32 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 
 @Entity
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "danh_gia_san_pham")
-public class DanhGiaSanPham {
+@Table(name = "binh_luan")
+public class BinhLuan {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int maDanhGia;
-    private String binhLuan;
-    private int soSao;
+    private int id;
+
+    // Người bình luận
+    @ManyToOne
+    private KhachHang khachHang;
+
+    // Sản phẩm cụ thể trong đơn hàng
+    @ManyToOne
+    private ChiTietDonHang chiTietDonHang;
+
+    // Nội dung bình luận
+    @Column(columnDefinition = "TEXT")
+    private String noiDung;
 
     @Convert(converter = ImageListConverter.class)
     private List<String> hinhAnh;
 
-    private LocalDateTime ngayTao;
-
-    @ManyToOne
-    private SanPham sanPham;
-
-    @ManyToOne
-    private KhachHang khachHang;
-
-    @OneToOne
-    private ChiTietDonHang chiTietDonHang;
+    private LocalDateTime ngayBinhLuan;
 }

@@ -47,6 +47,22 @@ public class PromotionServiceImpl implements PromotionService {
     }
 
     @Override
+    public SanPham goBoKhuyenMaiKhoiSanPham(int maSanPham) {
+        SanPham sp = productRepository.findById(maSanPham)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy sản phẩm"));
+
+        if (sp.getKhuyenMai() == null) {
+            throw new RuntimeException("Sản phẩm này không có khuyến mãi nào để gỡ.");
+        }
+
+        sp.setKhuyenMai(null); // Gỡ khuyến mãi
+        sp.setNgayCapNhat(LocalDateTime.now());
+
+        return productRepository.save(sp);
+    }
+
+
+    @Override
     public List<SanPham> getAllProductPromotion() {
         return productRepository.findByKhuyenMaiIsNotNull();
     }

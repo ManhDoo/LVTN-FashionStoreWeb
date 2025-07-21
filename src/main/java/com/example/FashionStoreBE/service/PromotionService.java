@@ -9,6 +9,7 @@ import java.util.List;
 public interface PromotionService {
     KhuyenMai createPromotion(PromotionRequest request);
     SanPham ganSanPhamVaoKhuyenMai(int maSanPham, int maKhuyenMai);
+    SanPham goBoKhuyenMaiKhoiSanPham(int maSanPham);
     List<SanPham> getAllProductPromotion();
     List<KhuyenMai> getAllPromotions();
 }

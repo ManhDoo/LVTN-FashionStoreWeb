@@ -2,6 +2,7 @@ package com.example.FashionStoreBE.service.impl;
 
 import com.example.FashionStoreBE.config.VNPayConfig;
 import com.example.FashionStoreBE.dto.request.GuestOrderRequest;
+import com.example.FashionStoreBE.dto.request.UpdateOrderInfoRequest;
 import com.example.FashionStoreBE.dto.response.OrderDetailResponse;
 import com.example.FashionStoreBE.exception.ApiException;
 import com.example.FashionStoreBE.exception.ForbidenExceeption;
@@ -18,7 +19,7 @@ import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.*;
-import org.springframework.data.redis.core.StringRedisTemplate;
+//import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +33,7 @@ public class OrderServiceImpl implements OrderService {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
-    private final StringRedisTemplate redisTemplate;
+//    private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final ProductDetailRopository chiTietSanPhamRepo;
     private final OrderRepository donHangRepo;
@@ -45,103 +46,103 @@ public class OrderServiceImpl implements OrderService {
     private final FirebaseMessagingService firebaseMessagingService;
 
 
-    @Override
-    @Transactional
-    public String placeOrder(int userId) {
-        String key = "cart:user:" + userId;
-        String lockKey = "lock:user:" + userId;
-        String lockValue = UUID.randomUUID().toString();
-
-        Boolean locked = redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, 10, TimeUnit.SECONDS);
-        if (Boolean.FALSE.equals(locked)) {
-            logger.warn("Order processing already in progress for user: {}", userId);
-            throw new RuntimeException("Đơn hàng đang được xử lý, vui lòng chờ.");
-        }
-
-        try {
-            String json = redisTemplate.opsForValue().get(key);
-            if (json == null || json.isEmpty()) {
-                logger.warn("Cart is empty for user: {}", userId);
-                throw new RuntimeException("Giỏ hàng trống");
-            }
-
-            List<GioHang> cart = objectMapper.readValue(json, new TypeReference<List<GioHang>>() {});
-            logger.debug("Cart items for user {}: {}", userId, cart);
-
-            DonHang donHang = new DonHang();
-            donHang.setNgayTao(LocalDateTime.now());
-            donHang.setNgayCapNhat(LocalDateTime.now());
-            donHang.setTrangThai("CHO_XAC_NHAN");
-            donHang.setKhachHang(khachHangRepo.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy khách hàng với ID: " + userId)));
-            logger.debug("Created order for user: {}", userId);
-
-            int tongSoLuong = 0;
-            double tongGia = 0;
-
-            donHang = donHangRepo.save(donHang);
-            logger.debug("Saved order with ID: {}", donHang.getMaDonHang());
-
-            for (GioHang item : cart) {
-                ChiTietSanPham chiTiet = chiTietSanPhamRepo.findById(item.getProductId())
-                        .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại: " + item.getProductId()));
-                logger.debug("Processing product ID: {}, quantity: {}", item.getProductId(), item.getQuantity());
-
-                // Kiểm tra tồn kho
-                if (chiTiet.getTonKho() < item.getQuantity()) {
-                    logger.error("Insufficient stock for product ID: {}", item.getProductId());
-                    throw new RuntimeException("Không đủ hàng cho sản phẩm: " + chiTiet.getId());
-                }
-
-                // Kiểm tra hình ảnh
-                try {
-                    List<String> hinhAnh = chiTiet.getHinhAnh();
-                    logger.debug("Images for product ID {}: {}", item.getProductId(), hinhAnh);
-                } catch (Exception e) {
-                    logger.error("Error accessing images for product ID {}: {}", item.getProductId(), e.getMessage());
-                    throw new RuntimeException("Lỗi khi truy cập hình ảnh sản phẩm ID " + item.getProductId() + ": " + e.getMessage());
-                }
-
-                // Tạo chi tiết đơn hàng
-                ChiTietDonHang chiTietDonHang = new ChiTietDonHang();
-                chiTietDonHang.setChiTietSanPham(chiTiet);
-                chiTietDonHang.setDonDatHang(donHang);
-                chiTietDonHang.setSoLuong(item.getQuantity());
-                chiTietDonHang.setDonGia(chiTiet.getSanPham().getGiaGoc() + chiTiet.getGiaThem());
-                chiTietDonHang.setSoTienGiamGia(0);
-                chiTietDonHangRepo.save(chiTietDonHang);
-                logger.debug("Saved order detail for product ID: {}", item.getProductId());
-
-                // Trừ tồn kho
-                chiTiet.setTonKho(chiTiet.getTonKho() - item.getQuantity());
-                chiTietSanPhamRepo.save(chiTiet);
-                logger.debug("Updated stock for product ID: {}, new stock: {}", item.getProductId(), chiTiet.getTonKho());
-
-                tongSoLuong += item.getQuantity();
-                tongGia += chiTietDonHang.getDonGia() * item.getQuantity();
-            }
-
-            donHang.setTongSoLuong(tongSoLuong);
-            donHang.setTongGia(tongGia);
-            donHangRepo.save(donHang);
-            logger.debug("Updated order with total quantity: {}, total price: {}", tongSoLuong, tongGia);
-
-            // Xóa giỏ hàng
-            redisTemplate.delete(key);
-            logger.debug("Cleared cart for user: {}", userId);
-
-            return "Đặt hàng thành công với mã đơn: " + donHang.getMaDonHang();
-        } catch (Exception e) {
-            logger.error("Failed to place order for user {}: {}", userId, e.getMessage());
-            throw new RuntimeException("Không thể đặt hàng: " + e.getMessage(), e);
-        } finally {
-            String currentValue = redisTemplate.opsForValue().get(lockKey);
-            if (lockValue.equals(currentValue)) {
-                redisTemplate.delete(lockKey);
-                logger.debug("Released lock for user: {}", userId);
-            }
-        }
-    }
+//    @Override
+//    @Transactional
+//    public String placeOrder(int userId) {
+//        String key = "cart:user:" + userId;
+//        String lockKey = "lock:user:" + userId;
+//        String lockValue = UUID.randomUUID().toString();
+//
+//        Boolean locked = redisTemplate.opsForValue().setIfAbsent(lockKey, lockValue, 10, TimeUnit.SECONDS);
+//        if (Boolean.FALSE.equals(locked)) {
+//            logger.warn("Order processing already in progress for user: {}", userId);
+//            throw new RuntimeException("Đơn hàng đang được xử lý, vui lòng chờ.");
+//        }
+//
+//        try {
+//            String json = redisTemplate.opsForValue().get(key);
+//            if (json == null || json.isEmpty()) {
+//                logger.warn("Cart is empty for user: {}", userId);
+//                throw new RuntimeException("Giỏ hàng trống");
+//            }
+//
+//            List<GioHang> cart = objectMapper.readValue(json, new TypeReference<List<GioHang>>() {});
+//            logger.debug("Cart items for user {}: {}", userId, cart);
+//
+//            DonHang donHang = new DonHang();
+//            donHang.setNgayTao(LocalDateTime.now());
+//            donHang.setNgayCapNhat(LocalDateTime.now());
+//            donHang.setTrangThai("CHO_XAC_NHAN");
+//            donHang.setKhachHang(khachHangRepo.findById(userId)
+//                    .orElseThrow(() -> new RuntimeException("Không tìm thấy khách hàng với ID: " + userId)));
+//            logger.debug("Created order for user: {}", userId);
+//
+//            int tongSoLuong = 0;
+//            double tongGia = 0;
+//
+//            donHang = donHangRepo.save(donHang);
+//            logger.debug("Saved order with ID: {}", donHang.getMaDonHang());
+//
+//            for (GioHang item : cart) {
+//                ChiTietSanPham chiTiet = chiTietSanPhamRepo.findById(item.getProductId())
+//                        .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại: " + item.getProductId()));
+//                logger.debug("Processing product ID: {}, quantity: {}", item.getProductId(), item.getQuantity());
+//
+//                // Kiểm tra tồn kho
+//                if (chiTiet.getTonKho() < item.getQuantity()) {
+//                    logger.error("Insufficient stock for product ID: {}", item.getProductId());
+//                    throw new RuntimeException("Không đủ hàng cho sản phẩm: " + chiTiet.getId());
+//                }
+//
+//                // Kiểm tra hình ảnh
+//                try {
+//                    List<String> hinhAnh = chiTiet.getHinhAnh();
+//                    logger.debug("Images for product ID {}: {}", item.getProductId(), hinhAnh);
+//                } catch (Exception e) {
+//                    logger.error("Error accessing images for product ID {}: {}", item.getProductId(), e.getMessage());
+//                    throw new RuntimeException("Lỗi khi truy cập hình ảnh sản phẩm ID " + item.getProductId() + ": " + e.getMessage());
+//                }
+//
+//                // Tạo chi tiết đơn hàng
+//                ChiTietDonHang chiTietDonHang = new ChiTietDonHang();
+//                chiTietDonHang.setChiTietSanPham(chiTiet);
+//                chiTietDonHang.setDonDatHang(donHang);
+//                chiTietDonHang.setSoLuong(item.getQuantity());
+//                chiTietDonHang.setDonGia(chiTiet.getSanPham().getGiaGoc() + chiTiet.getGiaThem());
+//                chiTietDonHang.setSoTienGiamGia(0);
+//                chiTietDonHangRepo.save(chiTietDonHang);
+//                logger.debug("Saved order detail for product ID: {}", item.getProductId());
+//
+//                // Trừ tồn kho
+//                chiTiet.setTonKho(chiTiet.getTonKho() - item.getQuantity());
+//                chiTietSanPhamRepo.save(chiTiet);
+//                logger.debug("Updated stock for product ID: {}, new stock: {}", item.getProductId(), chiTiet.getTonKho());
+//
+//                tongSoLuong += item.getQuantity();
+//                tongGia += chiTietDonHang.getDonGia() * item.getQuantity();
+//            }
+//
+//            donHang.setTongSoLuong(tongSoLuong);
+//            donHang.setTongGia(tongGia);
+//            donHangRepo.save(donHang);
+//            logger.debug("Updated order with total quantity: {}, total price: {}", tongSoLuong, tongGia);
+//
+//            // Xóa giỏ hàng
+//            redisTemplate.delete(key);
+//            logger.debug("Cleared cart for user: {}", userId);
+//
+//            return "Đặt hàng thành công với mã đơn: " + donHang.getMaDonHang();
+//        } catch (Exception e) {
+//            logger.error("Failed to place order for user {}: {}", userId, e.getMessage());
+//            throw new RuntimeException("Không thể đặt hàng: " + e.getMessage(), e);
+//        } finally {
+//            String currentValue = redisTemplate.opsForValue().get(lockKey);
+//            if (lockValue.equals(currentValue)) {
+//                redisTemplate.delete(lockKey);
+//                logger.debug("Released lock for user: {}", userId);
+//            }
+//        }
+//    }
 
     @Override
     @Transactional
@@ -275,6 +276,7 @@ public class OrderServiceImpl implements OrderService {
                 dto.setMauSac(ctsp.getMauSac().getTenMau());
                 dto.setNgayTao(donHang.getNgayTao());
                 dto.setNgayGiao(donHang.getNgayGiao());
+                dto.setPhiGiaoHang(donHang.getPhiGiaoHang());
                 dto.setTrangThai(donHang.getTrangThai());
                 dto.setCoThanhToan(donHang.isCoThanhToan());
                 dto.setCoYeuCauDoiTra(donHang.isCoYeuCauDoiTra());
@@ -348,6 +350,7 @@ public class OrderServiceImpl implements OrderService {
                 dto.setMauSac(ctsp.getMauSac().getTenMau());
                 dto.setNgayTao(donHang.getNgayTao());
                 dto.setNgayGiao(donHang.getNgayGiao());
+                dto.setPhiGiaoHang(donHang.getPhiGiaoHang());
                 dto.setTrangThai(donHang.getTrangThai());
                 dto.setCoThanhToan(donHang.isCoThanhToan());
                 dto.setCoYeuCauDoiTra(donHang.isCoYeuCauDoiTra());
@@ -445,6 +448,7 @@ public class OrderServiceImpl implements OrderService {
                 dto.setMauSac(ctsp.getMauSac().getTenMau());
                 dto.setNgayTao(donHang.getNgayTao());
                 dto.setNgayGiao(donHang.getNgayGiao());
+                dto.setPhiGiaoHang(donHang.getPhiGiaoHang());
                 dto.setTrangThai(donHang.getTrangThai());
                 dto.setCoThanhToan(donHang.isCoThanhToan());
                 dto.setCoYeuCauDoiTra(donHang.isCoYeuCauDoiTra());
@@ -493,6 +497,7 @@ public class OrderServiceImpl implements OrderService {
         dto.setSoLuong(chiTiet.getSoLuong());
         dto.setNgayTao(donHang.getNgayTao());
         dto.setNgayGiao(donHang.getNgayGiao());
+        dto.setPhiGiaoHang(donHang.getPhiGiaoHang());
         dto.setTrangThai(donHang.getTrangThai());
         dto.setCoThanhToan(donHang.isCoThanhToan());
         dto.setCoYeuCauDoiTra(donHang.isCoYeuCauDoiTra());
@@ -500,5 +505,64 @@ public class OrderServiceImpl implements OrderService {
         return dto;
     }
 
+    @Override
+    @Transactional
+    public String updateOrderInfo(int userId, int orderId, UpdateOrderInfoRequest request) {
+        DonHang donHang = donHangRepo.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
+
+        // Check user permission
+        if (donHang.getKhachHang() == null || donHang.getKhachHang().getMaKhachHang() != userId) {
+            throw new AccessDeniedException("Bạn không có quyền cập nhật thông tin đơn hàng này.");
+        }
+
+        // Check order status
+        if (!List.of("CHO_XAC_NHAN", "DA_THANH_TOAN").contains(donHang.getTrangThai())) {
+            throw new ApiException("Chỉ có thể cập nhật thông tin đơn hàng khi ở trạng thái 'Chờ xác nhận' hoặc 'Đã thanh toán'.");
+        }
+
+        // Update fields if provided in the request
+        if (request.getTenNguoiNhan() != null && !request.getTenNguoiNhan().isEmpty()) {
+            donHang.setTenNguoiNhan(request.getTenNguoiNhan());
+        }
+
+        if (request.getDuong() != null && !request.getDuong().isEmpty()) {
+            donHang.setDuong(request.getDuong());
+        }
+        if (request.getXa() != null && !request.getXa().isEmpty()) {
+            donHang.setXa(request.getXa());
+        }
+        if (request.getHuyen() != null && !request.getHuyen().isEmpty()) {
+            donHang.setHuyen(request.getHuyen());
+        }
+        if (request.getTinh() != null && !request.getTinh().isEmpty()) {
+            donHang.setTinh(request.getTinh());
+        }
+
+        // Update timestamp
+        donHang.setNgayCapNhat(LocalDateTime.now());
+
+        // Save changes
+        donHangRepo.save(donHang);
+
+        // Log update
+        logger.info("Updated order info for order ID: {}, user ID: {}", orderId, userId);
+
+        // Send email notification (optional)
+        String email = donHang.getEmailNguoiNhan();
+        if (email != null && !email.isEmpty()) {
+            String subject = "Cập nhật thông tin đơn hàng #" + donHang.getMaDonHang();
+            String body = "Chào " + donHang.getTenNguoiNhan() + ",\n\n" +
+                    "Thông tin đơn hàng #" + donHang.getMaDonHang() + " đã được cập nhật.\n" +
+                    "Tên người nhận: " + donHang.getTenNguoiNhan() + "\n" +
+                    "Số điện thoại: " + donHang.getSoDienThoaiNguoiNhan() + "\n" +
+                    "Địa chỉ: " + donHang.getDuong() + ", " + donHang.getXa() + ", " +
+                    donHang.getHuyen() + ", " + donHang.getTinh() + "\n\n" +
+                    "Cảm ơn bạn đã mua sắm tại FashionStore.";
+            emailService.sendOrderEmail(email, subject, body);
+        }
+
+        return "Cập nhật thông tin đơn hàng #" + orderId + " thành công.";
+    }
 
 }

@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Entity
 @Data
 @AllArgsConstructor
@@ -24,4 +26,11 @@ public class ChiTietDonHang {
     private int soLuong;
     private double donGia;
     private double soTienGiamGia;
+
+    @OneToMany(mappedBy = "chiTietDonHang", cascade = CascadeType.ALL)
+    private List<DanhGia> danhGias;
+
+    @OneToMany(mappedBy = "chiTietDonHang", cascade = CascadeType.ALL)
+    private List<BinhLuan> binhLuans;
+
 }

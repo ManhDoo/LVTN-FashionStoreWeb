@@ -39,18 +39,29 @@ public class ReturnController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getAllReturnsByUser(HttpServletRequest httpServletRequest) {
-        int userId = extractUserIdFromRequest(httpServletRequest);
-        List<PhieuDoiTraResponse> list = returnService.getAllReturnRequestsByUser(userId);
-        return ResponseEntity.ok(list);
+    public ResponseEntity<?> getAllReturnsByUser(HttpServletRequest request,
+                                                 @RequestParam(defaultValue = "0") int page,
+                                                 @RequestParam(defaultValue = "10") int size) {
+        int userId = extractUserIdFromRequest(request);
+        return ResponseEntity.ok(returnService.getAllReturnRequestsByUser(userId, page, size));
     }
 
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> getAllReturns() {
-        List<PhieuDoiTraResponse> list = returnService.getAllReturnRequests();
-        return ResponseEntity.ok(list);
+    public ResponseEntity<?> getAllReturns(@RequestParam(defaultValue = "0") int page,
+                                           @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(returnService.getAllReturnRequests(page, size));
     }
+
+
+    @PutMapping("/{maPhieu}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> updateReturnStatus(@PathVariable int maPhieu,
+                                                     @RequestParam String status) {
+        String result = returnService.updateReturnRequestStatus(maPhieu, status);
+        return ResponseEntity.ok(result);
+    }
+
 
 
 }

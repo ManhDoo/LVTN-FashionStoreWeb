@@ -9,6 +9,10 @@ import com.example.FashionStoreBE.model.*;
 import com.example.FashionStoreBE.repository.*;
 import com.example.FashionStoreBE.service.ReturnService;
 import lombok.AllArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +27,7 @@ public class ReturnServiceImpl implements ReturnService {
     private final OrderRepository donHangRepo;
     private final OrderDetailRepository chiTietDonHangRepo;
     private final PhieuDoiTraRepository phieuDoiTraRepository;
+    private final ProductDetailRopository chiTietSanPhamRepo;
 
     @Override
     @Transactional
@@ -62,6 +67,7 @@ public class ReturnServiceImpl implements ReturnService {
 
         phieu.setNgayTao(LocalDateTime.now());
         phieu.setTrangThai("CHO_XAC_NHAN");
+        phieu.setPhiDoiTra(request.getPhiDoiTra());
 
         List<ChiTietDoiTra> chiTietList = new ArrayList<>();
 
@@ -98,9 +104,29 @@ public class ReturnServiceImpl implements ReturnService {
     }
 
     @Override
-    public List<PhieuDoiTraResponse> getAllReturnRequestsByUser(int userId) {
-        List<PhieuDoiTra> phieuList = phieuDoiTraRepository.findAllByUserId(userId);
+    public Page<PhieuDoiTraResponse> getAllReturnRequestsByUser(int userId, int page, int size) {
+        Page<PhieuDoiTra> pageResult = phieuDoiTraRepository
+                .findAllByDonHang_KhachHang_MaKhachHang(
+                        userId,
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"))
+                );
 
+        List<PhieuDoiTraResponse> dtoList = mapToDtoList(pageResult.getContent());
+
+        return new PageImpl<>(dtoList, pageResult.getPageable(), pageResult.getTotalElements());
+    }
+
+    @Override
+    public Page<PhieuDoiTraResponse> getAllReturnRequests(int page, int size) {
+        Page<PhieuDoiTra> pageResult = phieuDoiTraRepository
+                .findAll(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao")));
+
+        List<PhieuDoiTraResponse> dtoList = mapToDtoList(pageResult.getContent());
+
+        return new PageImpl<>(dtoList, pageResult.getPageable(), pageResult.getTotalElements());
+    }
+
+    private List<PhieuDoiTraResponse> mapToDtoList(List<PhieuDoiTra> phieuList) {
         return phieuList.stream().map(phieu -> {
             PhieuDoiTraResponse dto = new PhieuDoiTraResponse();
             dto.setMaPhieu(phieu.getMaPhieu());
@@ -127,32 +153,101 @@ public class ReturnServiceImpl implements ReturnService {
     }
 
     @Override
-    public List<PhieuDoiTraResponse> getAllReturnRequests() {
-        List<PhieuDoiTra> phieuList = phieuDoiTraRepository.findAll();
+    @Transactional
+    public String updateReturnRequestStatus(int maPhieu, String newStatus) {
+        PhieuDoiTra phieu = phieuDoiTraRepository.findById(maPhieu)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu đổi/trả"));
 
-        return phieuList.stream().map(phieu -> {
-            PhieuDoiTraResponse dto = new PhieuDoiTraResponse();
-            dto.setMaPhieu(phieu.getMaPhieu());
-            dto.setLoai(phieu.getLoai());
-            dto.setLyDo(phieu.getLyDo());
-            dto.setTrangThai(phieu.getTrangThai());
-            dto.setNgayTao(phieu.getNgayTao());
-            dto.setMaDonHang(phieu.getDonHang().getMaDonHang());
+        // Validate new status
+        if (!List.of("CHO_XAC_NHAN", "DA_XAC_NHAN", "DANG_XU_LY", "HOAN_THANH", "TU_CHOI").contains(newStatus)) {
+            throw new ApiException("Trạng thái không hợp lệ");
+        }
 
-            List<PhieuDoiTraResponse.ChiTietDto> chiTietDtos = phieu.getChiTietDoiTras().stream().map(ct -> {
-                PhieuDoiTraResponse.ChiTietDto chiTietDto = new PhieuDoiTraResponse.ChiTietDto();
-                chiTietDto.setChiTietDonHangId(ct.getChiTietDonHang().getId());
-                chiTietDto.setTenSanPham(ct.getChiTietDonHang().getChiTietSanPham().getSanPham().getTensp());
-                chiTietDto.setHinhAnh(ct.getChiTietDonHang().getChiTietSanPham().getSanPham().getHinhAnh());
-                chiTietDto.setSoLuongDoi(ct.getSoLuongDoi());
-                chiTietDto.setLyDoChiTiet(ct.getLyDoChiTiet());
-                chiTietDto.setHinhAnhMinhChung(ct.getHinhAnhMinhChung());
-                return chiTietDto;
-            }).toList();
+        // If status is being updated to HOAN_THANH
+        if ("HOAN_THANH".equals(newStatus)) {
+            // Handle inventory for TRA (return) requests
+            boolean laLoiSanPham = "LOI_SAN_PHAM".equalsIgnoreCase(phieu.getLyDo());
+            boolean canHoanLaiTonKho = !laLoiSanPham;
 
-            dto.setChiTietDoiTra(chiTietDtos);
-            return dto;
-        }).toList();
+            if (canHoanLaiTonKho) {
+                for (ChiTietDoiTra chiTiet : phieu.getChiTietDoiTras()) {
+                    ChiTietSanPham ctsp = chiTiet.getChiTietDonHang().getChiTietSanPham();
+                    ctsp.setTonKho(ctsp.getTonKho() + chiTiet.getSoLuongDoi());
+                    chiTietSanPhamRepo.save(ctsp);
+                }
+            }
+
+
+            // Handle DOI (exchange) requests: Create a new order
+            if ("DOI".equalsIgnoreCase(phieu.getLoai())) {
+                DonHang originalOrder = phieu.getDonHang();
+                KhachHang khachHang = originalOrder.getKhachHang();
+                if (khachHang == null) {
+                    throw new ApiException("Không thể tạo đơn hàng mới: Đơn hàng gốc không có thông tin khách hàng");
+                }
+
+                // Create new order
+                DonHang newOrder = new DonHang();
+                newOrder.setKhachHang(khachHang);
+                newOrder.setTenNguoiNhan(originalOrder.getTenNguoiNhan());
+                newOrder.setSoDienThoaiNguoiNhan(originalOrder.getSoDienThoaiNguoiNhan());
+                newOrder.setEmailNguoiNhan(originalOrder.getEmailNguoiNhan());
+                newOrder.setDuong(originalOrder.getDuong());
+                newOrder.setXa(originalOrder.getXa());
+                newOrder.setHuyen(originalOrder.getHuyen());
+                newOrder.setTinh(originalOrder.getTinh());
+                newOrder.setPhiGiaoHang(phieu.getPhiDoiTra());
+                newOrder.setPhuongThucThanhToan(originalOrder.getPhuongThucThanhToan());
+                newOrder.setNgayTao(LocalDateTime.now());
+                newOrder.setNgayCapNhat(LocalDateTime.now());
+                newOrder.setTrangThai("CHO_XAC_NHAN");
+                newOrder.setCoThanhToan(false);
+                newOrder.setCoYeuCauDoiTra(false);
+
+                // Save the new order to generate ID
+                newOrder = donHangRepo.save(newOrder);
+
+                int tongSoLuong = 0;
+                double tongGia = 0;
+
+                // Create order details based on return request items
+                for (ChiTietDoiTra chiTietDoiTra : phieu.getChiTietDoiTras()) {
+                    ChiTietDonHang originalChiTiet = chiTietDoiTra.getChiTietDonHang();
+                    ChiTietSanPham ctsp = originalChiTiet.getChiTietSanPham();
+
+                    // Check inventory
+                    if (ctsp.getTonKho() < chiTietDoiTra.getSoLuongDoi()) {
+                        throw new ApiException("Không đủ hàng tồn kho cho sản phẩm: " + ctsp.getId());
+                    }
+
+                    // Create new order detail
+                    ChiTietDonHang newChiTiet = new ChiTietDonHang();
+                    newChiTiet.setDonDatHang(newOrder);
+                    newChiTiet.setChiTietSanPham(ctsp);
+                    newChiTiet.setSoLuong(chiTietDoiTra.getSoLuongDoi());
+                    newChiTiet.setDonGia(originalChiTiet.getDonGia());
+                    newChiTiet.setSoTienGiamGia(0);
+                    chiTietDonHangRepo.save(newChiTiet);
+
+                    // Update inventory
+                    ctsp.setTonKho(ctsp.getTonKho() - chiTietDoiTra.getSoLuongDoi());
+                    chiTietSanPhamRepo.save(ctsp);
+
+                    tongSoLuong += chiTietDoiTra.getSoLuongDoi();
+                    tongGia += originalChiTiet.getDonGia() * chiTietDoiTra.getSoLuongDoi();
+                }
+
+                // Update total quantity and price
+                newOrder.setTongSoLuong(tongSoLuong);
+                newOrder.setTongGia(tongGia);
+                donHangRepo.save(newOrder);
+            }
+        }
+
+        phieu.setTrangThai(newStatus);
+        phieuDoiTraRepository.save(phieu);
+
+        return "Cập nhật trạng thái phiếu đổi/trả #" + maPhieu + " thành " + newStatus;
     }
 
 }

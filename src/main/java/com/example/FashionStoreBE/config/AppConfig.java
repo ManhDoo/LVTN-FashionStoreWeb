@@ -33,6 +33,7 @@ public class AppConfig {
                                 .requestMatchers("/api/payment" ).permitAll()
                                 .requestMatchers("/api/vnpay/return" ).permitAll()
                                 .requestMatchers(HttpMethod.GET,"/api/promotion/**" ).permitAll()
+                                .requestMatchers(HttpMethod.GET,"/api/comment/**" ).permitAll()
                                 .requestMatchers("/api/**").authenticated()// Yêu cầu xác thực cho /api/**
 //                        .requestMatchers("/api/categories/**").hasRole("ADMIN")
                         .anyRequest().permitAll() // Cho phép tất cả các request khác

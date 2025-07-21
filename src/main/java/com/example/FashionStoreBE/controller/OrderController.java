@@ -2,6 +2,7 @@ package com.example.FashionStoreBE.controller;
 
 import com.example.FashionStoreBE.config.TokenProvider;
 import com.example.FashionStoreBE.dto.request.GuestOrderRequest;
+import com.example.FashionStoreBE.dto.request.UpdateOrderInfoRequest;
 import com.example.FashionStoreBE.dto.response.OrderDetailResponse;
 import com.example.FashionStoreBE.model.DonHang;
 import com.example.FashionStoreBE.service.OrderService;
@@ -29,12 +30,12 @@ public class OrderController {
         return tokenProvider.getUserIdFromToken(jwt);
     }
 
-    @PostMapping("/place")
-    public ResponseEntity<String> placeOrder(HttpServletRequest request) {
-        int userId = extractUserIdFromRequest(request);
-        String result = orderService.placeOrder(userId);
-        return ResponseEntity.ok(result);
-    }
+//    @PostMapping("/place")
+//    public ResponseEntity<String> placeOrder(HttpServletRequest request) {
+//        int userId = extractUserIdFromRequest(request);
+//        String result = orderService.placeOrder(userId);
+//        return ResponseEntity.ok(result);
+//    }
 
     @PostMapping("/guest/place")
     public ResponseEntity<String> placeOrderForGuest(@RequestBody GuestOrderRequest request) throws Exception {
@@ -94,6 +95,16 @@ public class OrderController {
         int userId = extractUserIdFromRequest(request);
         OrderDetailResponse response = orderService.getOrderById(orderId, userId);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{orderId}/info")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<String> updateOrderInfo(
+            @PathVariable int orderId,
+            HttpServletRequest request,
+            @RequestBody UpdateOrderInfoRequest req) {
+        int userId = extractUserIdFromRequest(request);
+        return ResponseEntity.ok(orderService.updateOrderInfo(userId, orderId, req));
     }
 
 }

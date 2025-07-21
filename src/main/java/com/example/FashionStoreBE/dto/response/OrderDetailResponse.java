@@ -25,6 +25,7 @@ public class OrderDetailResponse {
     private int soLuong;
     private LocalDateTime ngayTao;
     private LocalDateTime ngayGiao;
+    private double phiGiaoHang;
     private String trangThai;
 
     private boolean coThanhToan;

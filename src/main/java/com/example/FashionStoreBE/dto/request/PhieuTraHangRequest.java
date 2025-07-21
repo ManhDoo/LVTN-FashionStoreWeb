@@ -9,6 +9,7 @@ public class PhieuTraHangRequest {
     private int maDonHang;
     private String loai; // "DOI" hoặc "TRA"
     private String lyDo;
+    private double phiDoiTra;
     private List<Item> items;
 
     @Data

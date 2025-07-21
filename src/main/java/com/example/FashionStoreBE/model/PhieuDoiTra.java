@@ -25,6 +25,7 @@ public class PhieuDoiTra {
     private String lyDo;
     private String loai; // "doi" hoặc "tra"
     private String trangThai; // VD: "cho xac nhan", "da xac nhan", "da huy"
+    private double phiDoiTra;
 
     @OneToMany(mappedBy = "phieuDoiTra", cascade = CascadeType.ALL)
     private List<ChiTietDoiTra> chiTietDoiTras;
