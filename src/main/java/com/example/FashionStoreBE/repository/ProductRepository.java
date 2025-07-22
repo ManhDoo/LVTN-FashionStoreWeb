@@ -1,5 +1,6 @@
 package com.example.FashionStoreBE.repository;
 
+import com.example.FashionStoreBE.model.KhuyenMai;
 import com.example.FashionStoreBE.model.SanPham;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,6 +21,8 @@ public interface ProductRepository extends JpaRepository<SanPham, Integer> {
     Page<SanPham> findAll(Pageable pageable);
 
     List<SanPham> findByKhuyenMaiIsNotNull();
+
+    List<SanPham> findByKhuyenMai(KhuyenMai khuyenMai);
 
 
 

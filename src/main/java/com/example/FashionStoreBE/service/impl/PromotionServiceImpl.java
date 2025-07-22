@@ -1,14 +1,18 @@
 package com.example.FashionStoreBE.service.impl;
 
 import com.example.FashionStoreBE.dto.request.PromotionRequest;
+import com.example.FashionStoreBE.exception.ApiException;
+import com.example.FashionStoreBE.exception.ResourceNotFoundException;
 import com.example.FashionStoreBE.model.KhuyenMai;
 import com.example.FashionStoreBE.model.SanPham;
 import com.example.FashionStoreBE.repository.ProductRepository;
 import com.example.FashionStoreBE.repository.PromotionRepository;
 import com.example.FashionStoreBE.service.PromotionService;
+import com.google.api.gax.rpc.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,6 +37,41 @@ public class PromotionServiceImpl implements PromotionService {
         km.setTrangThai(request.getTrangThai());
         return promotionRepository.save(km);
     }
+
+    @Override
+    @Transactional
+    public void xoaKhuyenMai(int maKhuyenMai) {
+        KhuyenMai km = promotionRepository.findById(maKhuyenMai)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khuyến mãi có mã: " + maKhuyenMai));
+
+        // Kiểm tra có sản phẩm nào đang dùng khuyến mãi này không
+        List<SanPham> sanPhams = productRepository.findByKhuyenMai(km);
+        if (!sanPhams.isEmpty()) {
+            throw new ApiException("Không thể xóa khuyến mãi vì đang áp dụng cho "
+                    + sanPhams.size() + " sản phẩm. Vui lòng gỡ khuyến mãi khỏi các sản phẩm trước.");
+        }
+
+        promotionRepository.delete(km);
+    }
+
+    @Override
+    public KhuyenMai suaKhuyenMai(int maKhuyenMai, PromotionRequest request) {
+        KhuyenMai km = promotionRepository.findById(maKhuyenMai)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khuyến mãi"));
+
+        km.setTenKhuyenMai(request.getTenKhuyenMai());
+        km.setGiaTriGiam(request.getGiaTriGiam());
+        km.setHinhThucGiam(request.getHinhThucGiam());
+        km.setLoaiKhuyenMai(request.getLoaiKhuyenMai());
+        km.setMoTa(request.getMoTa());
+        km.setNgayBatDau(request.getNgayBatDau());
+        km.setNgayKetThuc(request.getNgayKetThuc());
+        km.setTrangThai(request.getTrangThai());
+
+        return promotionRepository.save(km);
+    }
+
+
 
     @Override
     public SanPham ganSanPhamVaoKhuyenMai(int maSanPham, int maKhuyenMai) {

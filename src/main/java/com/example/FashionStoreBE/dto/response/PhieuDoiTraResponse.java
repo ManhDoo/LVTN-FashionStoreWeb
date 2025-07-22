@@ -13,6 +13,7 @@ public class PhieuDoiTraResponse {
     private String lyDo;
     private String trangThai;
     private LocalDateTime ngayTao;
+    private double soTienHoanTra;
     private List<ChiTietDto> chiTietDoiTra;
 
     @Data

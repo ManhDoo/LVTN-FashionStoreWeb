@@ -1,11 +1,14 @@
 package com.example.FashionStoreBE.controller;
 
 import com.example.FashionStoreBE.dto.request.PromotionRequest;
+import com.example.FashionStoreBE.exception.ApiException;
 import com.example.FashionStoreBE.model.KhuyenMai;
 import com.example.FashionStoreBE.model.SanPham;
 import com.example.FashionStoreBE.repository.PromotionRepository;
 import com.example.FashionStoreBE.service.PromotionService;
+import com.google.api.gax.rpc.NotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +26,25 @@ public class PromotionController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<KhuyenMai> taoKhuyenMai(@RequestBody PromotionRequest request) {
         return ResponseEntity.ok(promotionService.createPromotion(request));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> xoaKhuyenMai(@PathVariable int id) {
+        try {
+            promotionService.xoaKhuyenMai(id);
+            return ResponseEntity.ok("Đã xóa khuyến mãi thành công.");
+        } catch (ApiException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<KhuyenMai> suaKhuyenMai(@PathVariable int id, @RequestBody PromotionRequest request) {
+        return ResponseEntity.ok(promotionService.suaKhuyenMai(id, request));
     }
 
     // Gán sản phẩm vào chương trình khuyến mãi

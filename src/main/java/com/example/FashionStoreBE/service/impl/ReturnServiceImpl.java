@@ -117,14 +117,27 @@ public class ReturnServiceImpl implements ReturnService {
     }
 
     @Override
-    public Page<PhieuDoiTraResponse> getAllReturnRequests(int page, int size) {
-        Page<PhieuDoiTra> pageResult = phieuDoiTraRepository
-                .findAll(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao")));
+    public Page<PhieuDoiTraResponse> getAllReturnRequests(String trangThai, int page, int size) {
+        Page<PhieuDoiTra> pageResult;
+
+        if (trangThai == null || trangThai.trim().isEmpty()) {
+            // Lấy tất cả nếu không lọc
+            pageResult = phieuDoiTraRepository.findAll(
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"))
+            );
+        } else {
+            // Lọc theo trạng thái
+            pageResult = phieuDoiTraRepository.findAllByTrangThai(
+                    trangThai,
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"))
+            );
+        }
 
         List<PhieuDoiTraResponse> dtoList = mapToDtoList(pageResult.getContent());
 
         return new PageImpl<>(dtoList, pageResult.getPageable(), pageResult.getTotalElements());
     }
+
 
     private List<PhieuDoiTraResponse> mapToDtoList(List<PhieuDoiTra> phieuList) {
         return phieuList.stream().map(phieu -> {
@@ -135,6 +148,7 @@ public class ReturnServiceImpl implements ReturnService {
             dto.setTrangThai(phieu.getTrangThai());
             dto.setNgayTao(phieu.getNgayTao());
             dto.setMaDonHang(phieu.getDonHang().getMaDonHang());
+            dto.setSoTienHoanTra(phieu.getDonHang().getTongGia());
 
             List<PhieuDoiTraResponse.ChiTietDto> chiTietDtos = phieu.getChiTietDoiTras().stream().map(ct -> {
                 PhieuDoiTraResponse.ChiTietDto chiTietDto = new PhieuDoiTraResponse.ChiTietDto();

@@ -12,4 +12,6 @@ import java.util.List;
 public interface PhieuDoiTraRepository extends JpaRepository<PhieuDoiTra, Integer> {
     Page<PhieuDoiTra> findAllByDonHang_KhachHang_MaKhachHang(int userId, Pageable pageable);
     Page<PhieuDoiTra> findAll(Pageable pageable);
+    Page<PhieuDoiTra> findAllByTrangThai(String trangThai, Pageable pageable);
+
 }

@@ -9,7 +9,7 @@ import java.util.List;
 public interface ReturnService {
     String createReturnRequest(PhieuTraHangRequest request, int userId);
     Page<PhieuDoiTraResponse> getAllReturnRequestsByUser(int userId, int page, int size);
-    Page<PhieuDoiTraResponse> getAllReturnRequests(int page, int size);
+    Page<PhieuDoiTraResponse> getAllReturnRequests(String trangThai, int page, int size);
     String updateReturnRequestStatus(int maPhieu, String newStatus);
 
 
