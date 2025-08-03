@@ -22,6 +22,7 @@ public class OrderDetailResponse {
     private String kichCo;
     private String mauSac;
     private double donGia;
+    private double tongGia;
     private int soLuong;
     private LocalDateTime ngayTao;
     private LocalDateTime ngayGiao;

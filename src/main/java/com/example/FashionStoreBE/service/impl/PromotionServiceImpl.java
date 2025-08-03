@@ -3,10 +3,13 @@ package com.example.FashionStoreBE.service.impl;
 import com.example.FashionStoreBE.dto.request.PromotionRequest;
 import com.example.FashionStoreBE.exception.ApiException;
 import com.example.FashionStoreBE.exception.ResourceNotFoundException;
+import com.example.FashionStoreBE.model.KhachHang;
 import com.example.FashionStoreBE.model.KhuyenMai;
 import com.example.FashionStoreBE.model.SanPham;
 import com.example.FashionStoreBE.repository.ProductRepository;
 import com.example.FashionStoreBE.repository.PromotionRepository;
+import com.example.FashionStoreBE.repository.UserRepository;
+import com.example.FashionStoreBE.service.EmailService;
 import com.example.FashionStoreBE.service.PromotionService;
 import com.google.api.gax.rpc.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,8 @@ public class PromotionServiceImpl implements PromotionService {
 
     private final PromotionRepository promotionRepository;
     private final ProductRepository productRepository;
+    private final EmailService emailService;
+    private final UserRepository userRepository;
 
     @Override
     public KhuyenMai createPromotion(PromotionRequest request) {
@@ -51,7 +56,8 @@ public class PromotionServiceImpl implements PromotionService {
                     + sanPhams.size() + " sản phẩm. Vui lòng gỡ khuyến mãi khỏi các sản phẩm trước.");
         }
 
-        promotionRepository.delete(km);
+        km.setDeleted(true);
+        promotionRepository.save(km);
     }
 
     @Override
@@ -82,7 +88,17 @@ public class PromotionServiceImpl implements PromotionService {
 
         sp.setKhuyenMai(km);
         sp.setNgayCapNhat(LocalDateTime.now());
-        return productRepository.save(sp);
+        SanPham saved = productRepository.save(sp);
+
+        // Lấy danh sách khách hàng
+        List<KhachHang> khachHangs = userRepository.findAll();
+
+        // Gửi email
+        for (KhachHang kh : khachHangs) {
+            emailService.sendPromotionEmail(kh.getEmail(), List.of(saved));
+        }
+
+        return saved;
     }
 
     @Override

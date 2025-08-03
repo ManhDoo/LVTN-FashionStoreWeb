@@ -1,7 +1,9 @@
 package com.example.FashionStoreBE.service.impl;
 
+import com.example.FashionStoreBE.exception.ProductDeleteException;
 import com.example.FashionStoreBE.model.DanhMuc;
 import com.example.FashionStoreBE.repository.CategoryRepository;
+import com.example.FashionStoreBE.repository.ProductRepository;
 import com.example.FashionStoreBE.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,9 @@ public class CategoriesServiceImpl implements CategoryService {
 
     @Autowired
     private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
 
     @Override
     public List<DanhMuc> getAllCategories() {
@@ -41,6 +46,12 @@ public class CategoriesServiceImpl implements CategoryService {
     @Override
     public void deleteCategory(int id) {
         DanhMuc existingCategory = getCategoryById(id);
+        long productCount = productRepository.countByDanhMuc_MaDanhMuc(id);
+
+        if (productCount > 0) {
+            throw new ProductDeleteException("Không thể xóa danh mục vì đang có " + productCount + " sản phẩm liên kết.");
+        }
+
         categoryRepository.delete(existingCategory);
     }
 

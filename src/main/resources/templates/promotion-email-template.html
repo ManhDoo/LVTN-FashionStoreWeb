@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        .product-card {
+            border: 1px solid #ccc;
+            padding: 12px;
+            margin-bottom: 20px;
+        }
+        .product-card img {
+            max-width: 200px;
+            height: auto;
+        }
+        .button {
+            padding: 10px 15px;
+            background-color: #008CBA;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+<h2>🎉 Các sản phẩm đang được khuyến mãi tại cửa hàng FashionStore 🎉</h2>
+<div th:each="sp : ${sanPhams}">
+    <div class="product-card">
+        <h3 th:text="${sp.tensp}"></h3>
+        <img th:src="${sp.hinhAnh[0]}" alt="Ảnh sản phẩm"/>
+        <p><strong>Giá gốc:</strong> <span th:text="${sp.giaGoc}"></span> VNĐ</p>
+        <p><strong>Giảm giá:</strong> <span th:text="${sp.khuyenMai.giaTriGiam}"></span> %</p>
+        <p><strong>Mô tả:</strong> <span th:text="${sp.moTa}"></span></p>
+        <a th:href="@{'http://localhost:5173/promotion'}" class="button">Xem chi tiết</a>
+    </div>
+</div>
+</body>
+</html>

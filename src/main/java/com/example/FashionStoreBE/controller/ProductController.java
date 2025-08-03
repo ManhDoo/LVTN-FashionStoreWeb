@@ -1,6 +1,10 @@
 package com.example.FashionStoreBE.controller;
 
 import com.example.FashionStoreBE.dto.request.ProductWithDetailsRequest;
+import com.example.FashionStoreBE.dto.request.UpdateSanPhamRequest;
+import com.example.FashionStoreBE.model.ChiTietSanPham;
+import com.example.FashionStoreBE.model.KichCo;
+import com.example.FashionStoreBE.model.MauSac;
 import com.example.FashionStoreBE.model.SanPham;
 import com.example.FashionStoreBE.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +59,50 @@ public class ProductController {
         return new ResponseEntity<>(updatedProduct, HttpStatus.OK);
     }
 
+    @PutMapping("/update/{maSanPham}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateSanPham(@PathVariable int maSanPham, @RequestBody UpdateSanPhamRequest updateDTO) {
+        try {
+            SanPham sanPham = new SanPham();
+            sanPham.setTensp(updateDTO.getTensp());
+            sanPham.setGiaGoc(updateDTO.getGiaGoc());
+            sanPham.setMoTa(updateDTO.getMoTa());
+            sanPham.setTrongLuong(updateDTO.getTrongLuong());
+            sanPham.setHinhAnh(updateDTO.getHinhAnh());
+
+            List<ChiTietSanPham> chiTietSanPhams = updateDTO.getChiTietSanPhams().stream().map(dto -> {
+                ChiTietSanPham chiTiet = new ChiTietSanPham();
+                chiTiet.setId(dto.getId());
+                chiTiet.setTonKho(dto.getTonKho());
+                chiTiet.setGiaThem(dto.getGiaThem());
+                chiTiet.setHinhAnh(dto.getHinhAnh());
+
+                SanPham sp = new SanPham();
+                sp.setMaSanPham(maSanPham);
+                chiTiet.setSanPham(sp);
+
+                if (dto.getMaKichCo() != null) {
+                    KichCo kichCo = new KichCo();
+                    kichCo.setMaKichCo(dto.getMaKichCo());
+                    chiTiet.setKichCo(kichCo);
+                }
+
+                if (dto.getMaMau() != null) {
+                    MauSac mauSac = new MauSac();
+                    mauSac.setMaMau(dto.getMaMau());
+                    chiTiet.setMauSac(mauSac);
+                }
+
+                return chiTiet;
+            }).toList();
+
+            SanPham updatedSanPham = productService.updateSanPham(maSanPham, sanPham, chiTietSanPhams);
+            return ResponseEntity.ok(updatedSanPham);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteProduct(@PathVariable("id") int id) {
@@ -62,9 +110,28 @@ public class ProductController {
         return ResponseEntity.ok(Map.of("message", "Xóa sản phẩm thành công"));
     }
 
+    @DeleteMapping("/hide/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> hideProduct(@PathVariable("id") int id) {
+        productService.hideProduct(id);
+        return ResponseEntity.ok(Map.of("message", "Ẩn sản phẩm thành công"));
+    }
+
     @GetMapping("/phai/{phai}")
     public ResponseEntity<List<SanPham>> getProductsByPhai(@PathVariable("phai") String phai) {
         List<SanPham> products = productService.getProductsByPhai(phai);
+        return new ResponseEntity<>(products, HttpStatus.OK);
+    }
+
+    @GetMapping("/is-deleted")
+    public ResponseEntity<Page<SanPham>> getProductsByIsDeleted(@RequestParam(defaultValue = "0") int page) {
+        Page<SanPham> products = productService.getProductsByIsDeleted(page);
+        return new ResponseEntity<>(products, HttpStatus.OK);
+    }
+
+    @GetMapping("/is-visible")
+    public ResponseEntity<Page<SanPham>> getProductsByIsVisible(@RequestParam(defaultValue = "0") int page) {
+        Page<SanPham> products = productService.getProductsByIsVisible(page);
         return new ResponseEntity<>(products, HttpStatus.OK);
     }
 
@@ -78,5 +145,17 @@ public class ProductController {
         List<SanPham> products = productService.getProductsByDanhMuc(maDanhMuc);
         return ResponseEntity.ok(products);
     }
+
+    @GetMapping("/san-pham-moi")
+    public ResponseEntity<Page<SanPham>> getNewProducts(@RequestParam(defaultValue = "0") int page) {
+        return ResponseEntity.ok(productService.getNewProducts(page));
+    }
+
+    @GetMapping("/top-selling")
+    public ResponseEntity<Page<SanPham>> getTopSellingProducts(@RequestParam(defaultValue = "0") int page) {
+        Page<SanPham> topProducts = productService.getTopSellingProducts(page);
+        return ResponseEntity.ok(topProducts);
+    }
+
 
 }

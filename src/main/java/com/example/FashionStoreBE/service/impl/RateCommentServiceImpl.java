@@ -2,9 +2,9 @@ package com.example.FashionStoreBE.service.impl;
 
 import com.example.FashionStoreBE.dto.request.RateCommentRequest;
 import com.example.FashionStoreBE.dto.response.ProductReviewSummary;
+import com.example.FashionStoreBE.dto.response.ReviewCommentResponse;
 import com.example.FashionStoreBE.dto.response.ReviewResponse;
 import com.example.FashionStoreBE.model.*;
-import com.example.FashionStoreBE.repository.CommentRepository;
 import com.example.FashionStoreBE.repository.OrderDetailRepository;
 import com.example.FashionStoreBE.repository.RateRepository;
 import com.example.FashionStoreBE.repository.UserRepository;
@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
 public class RateCommentServiceImpl implements RateCommentService {
 
     private final RateRepository danhGiaRepo;
-    private final CommentRepository binhLuanRepo;
     private final UserRepository khachHangRepo;
     private final OrderDetailRepository chiTietDonHangRepo;
 
@@ -51,23 +50,16 @@ public class RateCommentServiceImpl implements RateCommentService {
         danhGia.setKhachHang(khachHang);
         danhGia.setChiTietDonHang(chiTiet);
         danhGia.setSoSao(request.getSoSao());
+        danhGia.setNoiDung(request.getNoiDung());
+        danhGia.setHinhAnh(request.getHinhAnh());
         danhGia.setNgayDanhGia(LocalDateTime.now());
         danhGiaRepo.save(danhGia);
-
-        // Lưu bình luận
-        BinhLuan binhLuan = new BinhLuan();
-        binhLuan.setKhachHang(khachHang);
-        binhLuan.setChiTietDonHang(chiTiet);
-        binhLuan.setNoiDung(request.getNoiDung());
-        binhLuan.setHinhAnh(request.getHinhAnh());
-        binhLuan.setNgayBinhLuan(LocalDateTime.now());
-        binhLuanRepo.save(binhLuan);
     }
 
     @Override
     public ProductReviewSummary layTatCaDanhGiaSanPham(int maSanPham) {
-        List<DanhGia> danhGias = danhGiaRepo.findByChiTietDonHang_ChiTietSanPham_SanPham_MaSanPham(maSanPham);
-        List<BinhLuan> binhLuans = binhLuanRepo.findByChiTietDonHang_ChiTietSanPham_SanPham_MaSanPham(maSanPham);
+        List<DanhGia> danhGias = danhGiaRepo
+                .findByChiTietDonHang_ChiTietSanPham_SanPham_MaSanPhamAndDuyetTrue(maSanPham);
 
         List<ReviewResponse> responseList = new ArrayList<>();
 
@@ -77,32 +69,22 @@ public class RateCommentServiceImpl implements RateCommentService {
         }
 
         for (DanhGia dg : danhGias) {
-            BinhLuan bl = binhLuans.stream()
-                    .filter(b -> b.getChiTietDonHang().getId() == dg.getChiTietDonHang().getId() &&
-                            b.getKhachHang().getMaKhachHang() == dg.getKhachHang().getMaKhachHang())
-                    .findFirst()
-                    .orElse(null);
-
             ChiTietSanPham chiTiet = dg.getChiTietDonHang().getChiTietSanPham();
             SanPham sp = chiTiet.getSanPham();
 
             ReviewResponse review = new ReviewResponse();
+            review.setId(dg.getId());
             review.setHoTenKhachHang(dg.getKhachHang().getHoTen());
             review.setSoSao(dg.getSoSao());
             review.setNgayDanhGia(dg.getNgayDanhGia());
-
-            if (bl != null) {
-                review.setNoiDung(bl.getNoiDung());
-                review.setHinhAnh(bl.getHinhAnh());
-            }
-
+            review.setNoiDung(dg.getNoiDung());
+            review.setHinhAnh(dg.getHinhAnh());
             review.setTenSanPham(sp.getTensp());
             review.setMauSac(chiTiet.getMauSac().getTenMau());
-
             review.setHinhAnhSanPham(sp.getHinhAnh());
 
             responseList.add(review);
-            thongKeSoSao.put(dg.getSoSao(), thongKeSoSao.getOrDefault(dg.getSoSao(), 0) + 1);
+            thongKeSoSao.put(dg.getSoSao(), thongKeSoSao.get(dg.getSoSao()) + 1);
         }
 
         double diemTB = danhGias.stream()
@@ -112,6 +94,43 @@ public class RateCommentServiceImpl implements RateCommentService {
 
         return new ProductReviewSummary(danhGias.size(), diemTB, responseList, thongKeSoSao);
     }
+
+
+    @Override
+    public void duyetDanhGia(int id) {
+        DanhGia dg = danhGiaRepo.findById(id).orElseThrow(() -> new RuntimeException("Không tìm thấy đánh giá"));
+        dg.setDuyet(true);
+        danhGiaRepo.save(dg);
+    }
+
+    @Override
+    public List<ReviewResponse> layDanhSachDanhGiaChuaDuyet() {
+        List<DanhGia> danhGias = danhGiaRepo.findByDuyetFalse();
+
+        List<ReviewResponse> responseList = new ArrayList<>();
+
+        for (DanhGia dg : danhGias) {
+            ChiTietSanPham chiTiet = dg.getChiTietDonHang().getChiTietSanPham();
+            SanPham sp = chiTiet.getSanPham();
+
+            ReviewResponse review = new ReviewResponse();
+            review.setId(dg.getId());
+            review.setHoTenKhachHang(dg.getKhachHang().getHoTen());
+            review.setSoSao(dg.getSoSao());
+            review.setNgayDanhGia(dg.getNgayDanhGia());
+            review.setNoiDung(dg.getNoiDung());
+            review.setHinhAnh(dg.getHinhAnh());
+            review.setTenSanPham(sp.getTensp());
+            review.setMauSac(chiTiet.getMauSac().getTenMau());
+            review.setHinhAnhSanPham(sp.getHinhAnh());
+
+            responseList.add(review);
+        }
+
+        return responseList;
+    }
+
+
 
 
 }

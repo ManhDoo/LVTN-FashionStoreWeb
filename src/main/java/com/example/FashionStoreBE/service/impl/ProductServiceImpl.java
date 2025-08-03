@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -175,8 +176,6 @@ public class ProductServiceImpl implements ProductService {
         // Tìm sản phẩm hiện có
         SanPham existingProduct = getProductById(id);
 
-        // Không cho phép cập nhật các thông tin chính của sản phẩm
-        // Chỉ giữ lại thời gian cập nhật
         existingProduct.setNgayCapNhat(LocalDateTime.now());
         SanPham updatedProduct = productRepository.save(existingProduct);
 
@@ -206,7 +205,6 @@ public class ProductServiceImpl implements ProductService {
             ChiTietSanPham existingDetail = existingDetailsMap.get(key);
 
             if (existingDetail != null) {
-                // Cập nhật tồn kho cho chi tiết sản phẩm hiện có
                 existingDetail.setTonKho(dto.getTonKho());
                 productDetailRopository.save(existingDetail);
                 existingDetailsMap.remove(key); // Xóa khỏi map để không xóa sau này
@@ -243,27 +241,91 @@ public class ProductServiceImpl implements ProductService {
         return updatedProduct;
     }
 
+    @Transactional
+    public SanPham updateSanPham(int maSanPham, SanPham updatedSanPham, List<ChiTietSanPham> updatedChiTietSanPhams) throws Exception {
+        // Find existing product
+        Optional<SanPham> existingSanPhamOpt = productRepository.findById(maSanPham);
+        if (!existingSanPhamOpt.isPresent()) {
+            throw new Exception("Sản phẩm không tồn tại với mã: " + maSanPham);
+        }
+
+        SanPham existingSanPham = existingSanPhamOpt.get();
+
+        // Update basic product information
+        if (updatedSanPham.getTensp() != null) {
+            existingSanPham.setTensp(updatedSanPham.getTensp());
+        }
+        if (updatedSanPham.getGiaGoc() > 0) {
+            existingSanPham.setGiaGoc(updatedSanPham.getGiaGoc());
+        }
+        if (updatedSanPham.getMoTa() != null) {
+            existingSanPham.setMoTa(updatedSanPham.getMoTa());
+        }
+        if (updatedSanPham.getTrongLuong() > 0) {
+            existingSanPham.setTrongLuong(updatedSanPham.getTrongLuong());
+        }
+        if (updatedSanPham.getHinhAnh() != null && !updatedSanPham.getHinhAnh().isEmpty()) {
+            existingSanPham.setHinhAnh(updatedSanPham.getHinhAnh());
+        }
+
+
+
+
+
+        // Update last modified date
+        existingSanPham.setNgayCapNhat(LocalDateTime.now());
+
+        // Update product details (ChiTietSanPham) including inventory
+        if (updatedChiTietSanPhams != null) {
+            for (ChiTietSanPham updatedChiTiet : updatedChiTietSanPhams) {
+                Optional<ChiTietSanPham> existingChiTietOpt = productDetailRopository.findById(updatedChiTiet.getId());
+                if (existingChiTietOpt.isPresent()) {
+                    ChiTietSanPham existingChiTiet = existingChiTietOpt.get();
+
+                    // Update inventory
+                    if (updatedChiTiet.getTonKho() >= 0) {
+                        existingChiTiet.setTonKho(updatedChiTiet.getTonKho());
+                    }
+
+                    // Update additional price if provided
+                    if (updatedChiTiet.getGiaThem() >= 0) {
+                        existingChiTiet.setGiaThem(updatedChiTiet.getGiaThem());
+                    }
+
+                    // Update images if provided
+                    if (updatedChiTiet.getHinhAnh() != null && !updatedChiTiet.getHinhAnh().isEmpty()) {
+                        existingChiTiet.setHinhAnh(updatedChiTiet.getHinhAnh());
+                    }
+
+                    productDetailRopository.save(existingChiTiet);
+                } else {
+                    throw new Exception("Chi tiết sản phẩm không tồn tại với id: " + updatedChiTiet.getId());
+                }
+            }
+        }
+
+        // Save the updated product
+        return productRepository.save(existingSanPham);
+    }
 
     @Override
     public void deleteProduct(int id) {
         SanPham existingProduct = getProductById(id);
 
-        // Lấy danh sách chi tiết sản phẩm
-        List<ChiTietSanPham> chiTietList = productDetailRopository.findBySanPham(existingProduct);
-
-        // Kiểm tra từng chi tiết sản phẩm có nằm trong đơn hàng không
-        for (ChiTietSanPham chiTiet : chiTietList) {
-            boolean isInOrder = productDetailRopository.existsInChiTietDonHangByChiTietSanPham(chiTiet.getId());
-            if (isInOrder) {
-                throw new ProductDeleteException("Không thể xóa sản phẩm vì có chi tiết đang tồn tại trong đơn hàng");
-            }
+        if (existingProduct.isDeleted()){
+            existingProduct.setDeleted(false);
         }
+        else
+            existingProduct.setDeleted(true);
+        productRepository.save(existingProduct);
+    }
 
-        // Xóa chi tiết sản phẩm trước
-        productDetailRopository.deleteAll(chiTietList);
+    @Override
+    public void hideProduct(int id) {
+        SanPham existingProduct = getProductById(id);
 
-        // Xóa sản phẩm
-        productRepository.delete(existingProduct);
+        existingProduct.setVisible(true);
+        productRepository.save(existingProduct);
     }
 
     @Override
@@ -282,6 +344,35 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<SanPham> getProductsByDanhMuc(int maDanhMuc) {
         return productRepository.findByDanhMuc_MaDanhMuc(maDanhMuc);
+    }
+
+    @Override
+    public Page<SanPham> getProductsByIsDeleted(int page) {
+        int pageSize = 10;
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("ngayTao").descending());
+        return productRepository.findByIsDeletedTrue(pageable);
+    }
+
+    @Override
+    public Page<SanPham> getProductsByIsVisible(int page) {
+        int pageSize = 10;
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("ngayTao").descending());
+        return productRepository.findByIsVisibleTrue(pageable);
+    }
+
+    @Override
+    public Page<SanPham> getNewProducts(int page) {
+        int pageSize = 10;
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("ngayTao").descending());
+        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+        return productRepository.findByNgayTaoAfter(sevenDaysAgo, pageable);
+    }
+
+    @Override
+    public Page<SanPham> getTopSellingProducts(int page) {
+        int pageSize = 10;
+        Pageable pageable = PageRequest.of(page, pageSize);
+        return productRepository.findTopSellingProducts(pageable);
     }
 
 }

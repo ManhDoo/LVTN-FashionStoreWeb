@@ -30,7 +30,7 @@ public class ChiTietDonHang {
     @OneToMany(mappedBy = "chiTietDonHang", cascade = CascadeType.ALL)
     private List<DanhGia> danhGias;
 
-    @OneToMany(mappedBy = "chiTietDonHang", cascade = CascadeType.ALL)
-    private List<BinhLuan> binhLuans;
+//    @OneToMany(mappedBy = "chiTietDonHang", cascade = CascadeType.ALL)
+//    private List<BinhLuan> binhLuans;
 
 }

@@ -7,6 +7,7 @@ import java.util.List;
 
 @Data
 public class ReviewResponse {
+    private int id;
     private String hoTenKhachHang;
     private int soSao;
     private String noiDung;

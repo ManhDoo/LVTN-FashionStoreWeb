@@ -1,11 +1,13 @@
 package com.example.FashionStoreBE.model;
 
+import com.example.FashionStoreBE.converter.ImageListConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Data
@@ -28,5 +30,15 @@ public class DanhGia {
     // Số sao đánh giá (từ 1 đến 5)
     private int soSao;
 
+    @Column(columnDefinition = "TEXT")
+    private String noiDung;
+
+    @Convert(converter = ImageListConverter.class)
+    private List<String> hinhAnh;
+
     private LocalDateTime ngayDanhGia;
+
+    @Column(name = "duyet")
+    private boolean duyet = false;
+
 }

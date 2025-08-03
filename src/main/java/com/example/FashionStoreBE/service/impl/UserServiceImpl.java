@@ -2,6 +2,7 @@ package com.example.FashionStoreBE.service.impl;
 
 import com.example.FashionStoreBE.config.TokenProvider;
 import com.example.FashionStoreBE.dto.request.LoginRequest;
+import com.example.FashionStoreBE.dto.request.UpdateProfileRequest;
 import com.example.FashionStoreBE.dto.response.LoginResponse;
 import com.example.FashionStoreBE.dto.response.ProfileResponse;
 import com.example.FashionStoreBE.exception.UserException;
@@ -89,4 +90,34 @@ public class UserServiceImpl implements UserService {
                         user.getTinh()
                 )).collect(Collectors.toList());
     }
+
+    @Override
+    public void updateProfile(String token, UpdateProfileRequest request) {
+        int userId = tokenProvider.getUserIdFromToken(token);
+        KhachHang user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException("Người dùng không tồn tại"));
+
+        user.setHoTen(request.getHoTen());
+        user.setSoDienThoai(request.getSoDienThoai());
+        user.setDuong(request.getDuong());
+        user.setXa(request.getXa());
+        user.setHuyen(request.getHuyen());
+        user.setTinh(request.getTinh());
+        user.setNgayCapNhat(LocalDateTime.now());
+
+        userRepository.save(user);
+    }
+
+    @Override
+    public void resetPassword(String email, String newPassword) {
+        KhachHang user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserException("Email không tồn tại"));
+
+        user.setMatKhau(passwordEncoder.encode(newPassword));
+        user.setNgayCapNhat(LocalDateTime.now());
+
+        userRepository.save(user);
+    }
+
+
 }

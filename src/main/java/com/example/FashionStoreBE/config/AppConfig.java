@@ -1,10 +1,13 @@
 package com.example.FashionStoreBE.config;
 
+import com.example.FashionStoreBE.service.OAuth2SuccessHandler;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,7 +22,11 @@ import java.util.Collections;
 
 @Configuration
 @EnableGlobalMethodSecurity(prePostEnabled = true)
+@EnableWebSecurity
 public class AppConfig {
+
+    @Autowired
+    private OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
@@ -37,6 +44,9 @@ public class AppConfig {
                                 .requestMatchers("/api/**").authenticated()// Yêu cầu xác thực cho /api/**
 //                        .requestMatchers("/api/categories/**").hasRole("ADMIN")
                         .anyRequest().permitAll() // Cho phép tất cả các request khác
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(oAuth2SuccessHandler)
                 )
                 .addFilterBefore(new JwtTokenValidator(), BasicAuthenticationFilter.class)
                 .csrf(csrf -> csrf.disable())

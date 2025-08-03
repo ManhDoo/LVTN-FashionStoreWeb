@@ -25,8 +25,5 @@ public class KhuyenMai {
     private LocalDateTime ngayBatDau;
     private LocalDateTime ngayKetThuc;
     private String trangThai;
-
-
-
-
+    private boolean isDeleted;
 }

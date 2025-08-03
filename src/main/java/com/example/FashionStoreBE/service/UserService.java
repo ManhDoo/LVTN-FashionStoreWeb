@@ -1,6 +1,7 @@
 package com.example.FashionStoreBE.service;
 
 import com.example.FashionStoreBE.dto.request.LoginRequest;
+import com.example.FashionStoreBE.dto.request.UpdateProfileRequest;
 import com.example.FashionStoreBE.dto.response.LoginResponse;
 import com.example.FashionStoreBE.dto.response.ProfileResponse;
 import com.example.FashionStoreBE.model.KhachHang;
@@ -16,5 +17,10 @@ public interface UserService {
     List<ProfileResponse> getProfileByUserId(String token);
 
     LoginResponse loginForAdmin(LoginRequest request);
+
+    void updateProfile(String token, UpdateProfileRequest request);
+
+    void resetPassword(String email, String newPassword);
+
 
 }

@@ -1,31 +1,29 @@
 package com.example.FashionStoreBE.service.impl;
 
-import com.example.FashionStoreBE.config.VNPayConfig;
 import com.example.FashionStoreBE.dto.request.GuestOrderRequest;
 import com.example.FashionStoreBE.dto.request.UpdateOrderInfoRequest;
 import com.example.FashionStoreBE.dto.response.OrderDetailResponse;
 import com.example.FashionStoreBE.exception.ApiException;
-import com.example.FashionStoreBE.exception.ForbidenExceeption;
 import com.example.FashionStoreBE.exception.ResourceNotFoundException;
 import com.example.FashionStoreBE.model.*;
+import com.example.FashionStoreBE.payment.Momo.MomoService;
 import com.example.FashionStoreBE.repository.*;
 import com.example.FashionStoreBE.service.EmailService;
 import com.example.FashionStoreBE.service.FirebaseMessagingService;
 import com.example.FashionStoreBE.service.OrderService;
-import com.example.FashionStoreBE.service.VNPayService;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.example.FashionStoreBE.payment.VNPay.VNPayService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.*;
 //import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @AllArgsConstructor
@@ -44,6 +42,8 @@ public class OrderServiceImpl implements OrderService {
     private final VNPayService vnPayService;
     private final BillRepository hoaDonRepository;
     private final FirebaseMessagingService firebaseMessagingService;
+    private final MomoService momoService;
+    private final SimpMessagingTemplate messagingTemplate;
 
 
 //    @Override
@@ -217,14 +217,16 @@ public class OrderServiceImpl implements OrderService {
         donHang.setTongGia(tongGia);
         donHangRepo.save(donHang);
 
+        // Gửi thông báo qua WebSocket
+        logger.info("Sending WebSocket notification for order: {}", donHang.getMaDonHang());
+        messagingTemplate.convertAndSend("/topic/newOrder", donHang.getMaDonHang());
+
         String title = "Đơn hàng mới #" + donHang.getMaDonHang();
         String bodyfire = "Bạn vừa có đơn hàng mới. Tổng giá: " + donHang.getTongGia() + " VND";
         firebaseMessagingService.sendNotificationToTopic("admin_notifications", title, bodyfire);
 
-        // Trả về phản hồi thành công ngay lập tức
         String successMessage = "Khách chưa đăng nhập đã đặt hàng với mã đơn: " + donHang.getMaDonHang();
 
-        // Gửi email bất đồng bộ
         String email = request.getEmailNguoiNhan();
         String subject = "Xác nhận đơn hàng #" + donHang.getMaDonHang();
         String body = "Chào " + request.getTenNguoiNhan() + ",\n\n"
@@ -239,6 +241,11 @@ public class OrderServiceImpl implements OrderService {
         if ("VNPAY".equals(pt.getTenPhuongThuc())) {
             return vnPayService.createVNPayPaymentUrl(donHang, "Guest Order Payment #" + donHang.getMaDonHang());
         }
+
+        if ("MoMo".equals(pt.getTenPhuongThuc())) {
+            return momoService.createPaymentUrl(donHang, "Guest Order Payment #" + donHang.getMaDonHang());
+        }
+
 
         return successMessage;
     }
@@ -271,6 +278,7 @@ public class OrderServiceImpl implements OrderService {
                 List<String> hinhAnhList = sp.getHinhAnh();
                 dto.setHinhAnh(hinhAnhList != null && !hinhAnhList.isEmpty() ? hinhAnhList.get(0) : null);
                 dto.setDonGia(chiTiet.getDonGia());
+                dto.setTongGia(donHang.getTongGia());
                 dto.setSoLuong(chiTiet.getSoLuong());
                 dto.setKichCo(ctsp.getKichCo().getTenKichCo());
                 dto.setMauSac(ctsp.getMauSac().getTenMau());
@@ -295,7 +303,6 @@ public class OrderServiceImpl implements OrderService {
         DonHang donHang = donHangRepo.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đơn hàng với ID: " + orderId));
 
-        // Kiểm tra người dùng sở hữu đơn
         if (donHang.getKhachHang() == null || donHang.getKhachHang().getMaKhachHang() != userId) {
             throw new AccessDeniedException("Bạn không có quyền hủy đơn hàng này.");
         }
@@ -348,6 +355,7 @@ public class OrderServiceImpl implements OrderService {
                 dto.setSoLuong(chiTiet.getSoLuong());
                 dto.setKichCo(ctsp.getKichCo().getTenKichCo());
                 dto.setMauSac(ctsp.getMauSac().getTenMau());
+                dto.setTongGia(donHang.getTongGia());
                 dto.setNgayTao(donHang.getNgayTao());
                 dto.setNgayGiao(donHang.getNgayGiao());
                 dto.setPhiGiaoHang(donHang.getPhiGiaoHang());
@@ -393,7 +401,6 @@ public class OrderServiceImpl implements OrderService {
                 hoaDon.setPhiGiaoHang(donHang.getPhiGiaoHang());
                 hoaDon.setTongGia(donHang.getTongGia());
 
-                // Thành tiền = tổng giá + phí giao hàng (hoặc tính tùy logic bạn)
                 hoaDon.setThanhTien(donHang.getTongGia() + donHang.getPhiGiaoHang());
 
                 hoaDon.setGhiChu("Hóa đơn cho đơn hàng #" + donHang.getMaDonHang());
@@ -443,6 +450,7 @@ public class OrderServiceImpl implements OrderService {
                 dto.setHinhAnh(hinhAnhList != null && !hinhAnhList.isEmpty() ? hinhAnhList.get(0) : null);
 
                 dto.setDonGia(chiTiet.getDonGia());
+                dto.setTongGia(donHang.getTongGia());
                 dto.setSoLuong(chiTiet.getSoLuong());
                 dto.setKichCo(ctsp.getKichCo().getTenKichCo());
                 dto.setMauSac(ctsp.getMauSac().getTenMau());
@@ -485,6 +493,7 @@ public class OrderServiceImpl implements OrderService {
         dto.setMaDonHang(donHang.getMaDonHang());
         dto.setTenNguoiNhan(donHang.getTenNguoiNhan());
         dto.setSoDienThoai(donHang.getSoDienThoaiNguoiNhan());
+        dto.setTongGia(donHang.getTongGia());
         dto.setDiaChi(diaChi);
         dto.setMaSanPham(sp.getMaSanPham());
         dto.setTenSanPham(sp.getTensp());
@@ -494,6 +503,7 @@ public class OrderServiceImpl implements OrderService {
         dto.setKichCo(ctsp.getKichCo().getTenKichCo());
         dto.setMauSac(ctsp.getMauSac().getTenMau());
         dto.setDonGia(chiTiet.getDonGia());
+
         dto.setSoLuong(chiTiet.getSoLuong());
         dto.setNgayTao(donHang.getNgayTao());
         dto.setNgayGiao(donHang.getNgayGiao());
@@ -539,16 +549,12 @@ public class OrderServiceImpl implements OrderService {
             donHang.setTinh(request.getTinh());
         }
 
-        // Update timestamp
         donHang.setNgayCapNhat(LocalDateTime.now());
-
-        // Save changes
         donHangRepo.save(donHang);
 
         // Log update
         logger.info("Updated order info for order ID: {}, user ID: {}", orderId, userId);
 
-        // Send email notification (optional)
         String email = donHang.getEmailNguoiNhan();
         if (email != null && !email.isEmpty()) {
             String subject = "Cập nhật thông tin đơn hàng #" + donHang.getMaDonHang();

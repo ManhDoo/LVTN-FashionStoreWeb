@@ -148,7 +148,9 @@ public class ReturnServiceImpl implements ReturnService {
             dto.setTrangThai(phieu.getTrangThai());
             dto.setNgayTao(phieu.getNgayTao());
             dto.setMaDonHang(phieu.getDonHang().getMaDonHang());
-            dto.setSoTienHoanTra(phieu.getDonHang().getTongGia());
+            dto.setSoTienHoanTra(
+                    "DOI".equalsIgnoreCase(phieu.getLoai()) ? 0 : phieu.getDonHang().getTongGia()
+            );
 
             List<PhieuDoiTraResponse.ChiTietDto> chiTietDtos = phieu.getChiTietDoiTras().stream().map(ct -> {
                 PhieuDoiTraResponse.ChiTietDto chiTietDto = new PhieuDoiTraResponse.ChiTietDto();
@@ -215,7 +217,7 @@ public class ReturnServiceImpl implements ReturnService {
                 newOrder.setNgayTao(LocalDateTime.now());
                 newOrder.setNgayCapNhat(LocalDateTime.now());
                 newOrder.setTrangThai("CHO_XAC_NHAN");
-                newOrder.setCoThanhToan(false);
+                newOrder.setCoThanhToan(true);
                 newOrder.setCoYeuCauDoiTra(false);
 
                 // Save the new order to generate ID
@@ -248,7 +250,10 @@ public class ReturnServiceImpl implements ReturnService {
                     chiTietSanPhamRepo.save(ctsp);
 
                     tongSoLuong += chiTietDoiTra.getSoLuongDoi();
-                    tongGia += originalChiTiet.getDonGia() * chiTietDoiTra.getSoLuongDoi();
+                    if (!List.of("LOI_SAN_PHAM", "GUI_SAI_HANG", "KHAC_MO_TA").contains(phieu.getLyDo())) {
+                        tongGia += originalChiTiet.getDonGia() * chiTietDoiTra.getSoLuongDoi();
+                    }
+
                 }
 
                 // Update total quantity and price

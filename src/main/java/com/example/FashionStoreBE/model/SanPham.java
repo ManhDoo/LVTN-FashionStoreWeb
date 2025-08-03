@@ -30,10 +30,14 @@ public class SanPham {
     private String moTa;
     private LocalDateTime ngayTao;
     private LocalDateTime ngayCapNhat;
+    private double trongLuong;
 
     @ManyToOne
     private DanhMuc danhMuc;
 
     @ManyToOne
     private KhuyenMai khuyenMai;
+
+    private boolean isVisible = false;
+    private boolean isDeleted = false;
 }

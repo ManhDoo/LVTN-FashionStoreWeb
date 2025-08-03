@@ -1,7 +1,6 @@
 package com.example.FashionStoreBE.controller;
 
-import com.example.FashionStoreBE.service.VNPayService;
-import com.example.FashionStoreBE.service.impl.OrderServiceImpl;
+import com.example.FashionStoreBE.payment.VNPay.VNPayService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
