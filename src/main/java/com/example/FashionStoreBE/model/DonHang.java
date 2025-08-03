@@ -21,7 +21,7 @@ public class DonHang {
     private double phiGiaoHang;
     private double tongGia;
     private String tenNguoiNhan;
-    private int soDienThoaiNguoiNhan;
+    private String soDienThoaiNguoiNhan;
     private String emailNguoiNhan;
     private String duong;
     private String xa;

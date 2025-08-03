@@ -11,7 +11,7 @@ public class ProfileResponse {
     private int maKhachHang;
     private String hoTen;
     private String email;
-    private int soDienThoai;
+    private String soDienThoai;
     private String duong;
     private String xa;
     private String huyen;

@@ -14,7 +14,7 @@ public class BillResponse {
     private int maHoaDon;
     private int maDonHang;
     private String tenNguoiNhan;
-    private int soDienThoai;
+    private String soDienThoai;
     private String diaChi;
     private double phiGiaoHang;
     private double thanhTien;

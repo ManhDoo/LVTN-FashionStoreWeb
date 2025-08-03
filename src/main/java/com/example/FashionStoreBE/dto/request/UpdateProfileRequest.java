@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class UpdateProfileRequest {
     private String hoTen;
-    private int soDienThoai;
+    private String soDienThoai;
     private String duong;
     private String xa;
     private String huyen;

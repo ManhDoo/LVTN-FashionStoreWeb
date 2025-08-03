@@ -9,7 +9,7 @@ import java.util.List;
 public class GuestOrderRequest {
     private Integer maKhachHang;
     private String tenNguoiNhan;
-    private int soDienThoaiNguoiNhan;
+    private String soDienThoaiNguoiNhan;
     private String emailNguoiNhan;
     private String duong;
     private String xa;

@@ -19,7 +19,7 @@
         private String hoTen;
         private String email;
         private String matKhau;
-        private int soDienThoai;
+        private String soDienThoai;
         private String duong;
         private String xa;
         private String huyen;

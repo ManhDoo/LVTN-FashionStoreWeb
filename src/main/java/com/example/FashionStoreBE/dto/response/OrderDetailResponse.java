@@ -13,7 +13,7 @@ public class OrderDetailResponse {
     private int maDonHang;
     private String tenNguoiNhan;
     private String diaChi;
-    private int soDienThoai;
+    private String soDienThoai;
     private int id;
 
     private int maSanPham;
