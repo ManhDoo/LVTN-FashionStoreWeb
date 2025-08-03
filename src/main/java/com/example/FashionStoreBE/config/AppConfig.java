@@ -58,8 +58,8 @@ public class AppConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
-
+//        cfg.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
+        cfg.setAllowedOrigins(Collections.singletonList("https://lvtn-fashion-store-web-fe-9qyp.vercel.app"));
         cfg.setAllowedMethods(Collections.singletonList("*"));
         cfg.setAllowCredentials(true);
         cfg.setAllowedHeaders(Collections.singletonList("*"));

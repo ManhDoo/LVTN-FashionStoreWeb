@@ -214,10 +214,10 @@ public class MomoService {
         String redirectUrl;
         if (resultCode == 0) {
             // Thanh toán thành công
-            redirectUrl = "http://localhost:5173/payment/success?orderId=" + orderId;
+            redirectUrl = "https://lvtn-fashion-store-web-fe-9qyp.vercel.app/payment/success?orderId=" + orderId;
         } else {
             // Thanh toán thất bại
-            redirectUrl = "http://localhost:5173/payment/failed?orderId=" + orderId + "&error=" + URLEncoder.encode(params.get("message"), StandardCharsets.UTF_8.toString());
+            redirectUrl = "https://lvtn-fashion-store-web-fe-9qyp.vercel.app/payment/failed?orderId=" + orderId + "&error=" + URLEncoder.encode(params.get("message"), StandardCharsets.UTF_8.toString());
         }
 
         return redirectUrl;

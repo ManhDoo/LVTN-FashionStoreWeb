@@ -141,13 +141,13 @@ public class VNPayService {
             emailService.sendOrderEmail(email, subject, body);
 
             // Chuyển hướng đến trang localhost
-            String redirectUrl = "http://localhost:5173/vnpay-return?status=success&orderId=" + orderId;
+            String redirectUrl = "https://lvtn-fashion-store-web-fe-9qyp.vercel.app/vnpay-return?status=success&orderId=" + orderId;
             response.sendRedirect(redirectUrl);
         } else {
             donHang.setCoThanhToan(false);
             donHang.setNgayCapNhat(LocalDateTime.now());
             donHangRepo.save(donHang);
-            String redirectUrl = "http://localhost:5173/vnpay-return?status=failure&orderId=" + orderId;
+            String redirectUrl = "https://lvtn-fashion-store-web-fe-9qyp.vercel.app/vnpay-return?status=failure&orderId=" + orderId;
             response.sendRedirect(redirectUrl);
         }
     }
