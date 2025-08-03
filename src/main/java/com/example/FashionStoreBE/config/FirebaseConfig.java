@@ -13,40 +13,16 @@ import java.io.InputStream;
 
 @Configuration
 public class FirebaseConfig {
-    @PostConstruct
-    public void initialize() {
-        try {
-            // Sử dụng ClassLoader để tải tệp từ resources
-            InputStream serviceAccount = getClass().getClassLoader()
-                    .getResourceAsStream("fashionstore-e91ec-firebase-adminsdk-fbsvc-81ccafa3fe.json");
-
-            if (serviceAccount == null) {
-                throw new FileNotFoundException("Tệp fashionstorebe-firebase-adminsdk.json không được tìm thấy trong resources.");
-            }
-
-            FirebaseOptions options = FirebaseOptions.builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                    .build();
-
-            if (FirebaseApp.getApps().isEmpty()) {
-                FirebaseApp.initializeApp(options);
-                System.out.println("Firebase đã được khởi tạo thành công.");
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Không tìm thấy tệp cấu hình Firebase: " + e.getMessage());
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Không thể khởi tạo Firebase: " + e.getMessage());
-        }
-    }
-
-//    private static final String FIREBASE_CONFIG_PATH = "/etc/secrets/firebase.json"; // đường dẫn file Render mount vào
-//
 //    @PostConstruct
 //    public void initialize() {
 //        try {
-//            FileInputStream serviceAccount = new FileInputStream(FIREBASE_CONFIG_PATH);
+//            // Sử dụng ClassLoader để tải tệp từ resources
+//            InputStream serviceAccount = getClass().getClassLoader()
+//                    .getResourceAsStream("fashionstore-e91ec-firebase-adminsdk-fbsvc-81ccafa3fe.json");
+//
+//            if (serviceAccount == null) {
+//                throw new FileNotFoundException("Tệp fashionstorebe-firebase-adminsdk.json không được tìm thấy trong resources.");
+//            }
 //
 //            FirebaseOptions options = FirebaseOptions.builder()
 //                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
@@ -54,14 +30,38 @@ public class FirebaseConfig {
 //
 //            if (FirebaseApp.getApps().isEmpty()) {
 //                FirebaseApp.initializeApp(options);
-//                System.out.println("✅ Firebase đã được khởi tạo từ file secret.");
+//                System.out.println("Firebase đã được khởi tạo thành công.");
 //            }
 //        } catch (FileNotFoundException e) {
 //            e.printStackTrace();
-//            throw new RuntimeException("❌ Không tìm thấy file Firebase tại: " + FIREBASE_CONFIG_PATH);
+//            throw new RuntimeException("Không tìm thấy tệp cấu hình Firebase: " + e.getMessage());
 //        } catch (Exception e) {
 //            e.printStackTrace();
-//            throw new RuntimeException("❌ Không thể khởi tạo Firebase: " + e.getMessage());
+//            throw new RuntimeException("Không thể khởi tạo Firebase: " + e.getMessage());
 //        }
 //    }
+
+    private static final String FIREBASE_CONFIG_PATH = "/etc/secrets/firebase.json"; // đường dẫn file Render mount vào
+
+    @PostConstruct
+    public void initialize() {
+        try {
+            FileInputStream serviceAccount = new FileInputStream(FIREBASE_CONFIG_PATH);
+
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .build();
+
+            if (FirebaseApp.getApps().isEmpty()) {
+                FirebaseApp.initializeApp(options);
+                System.out.println("✅ Firebase đã được khởi tạo từ file secret.");
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            throw new RuntimeException("❌ Không tìm thấy file Firebase tại: " + FIREBASE_CONFIG_PATH);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("❌ Không thể khởi tạo Firebase: " + e.getMessage());
+        }
+    }
 }
