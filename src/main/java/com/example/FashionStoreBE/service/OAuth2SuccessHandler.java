@@ -58,7 +58,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         // Redirect kèm token về FE (FE lấy token từ query string để lưu vào localStorage)
         String redirectUrl = UriComponentsBuilder
-                .fromUriString("http://localhost:5173/oauth2/redirect")
+                .fromUriString("https://lvtn-fashion-store-web-fe-9qyp.vercel.app/oauth2/redirect")
                 .queryParam("token", jwt)
                 .build().toUriString();
 
