@@ -14,12 +14,18 @@ import com.example.FashionStoreBE.service.OrderService;
 import com.example.FashionStoreBE.payment.VNPay.VNPayService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.data.domain.*;
 //import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -31,7 +37,7 @@ public class OrderServiceImpl implements OrderService {
 
     private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
-//    private final StringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
     private final ProductDetailRopository chiTietSanPhamRepo;
     private final OrderRepository donHangRepo;
@@ -194,9 +200,15 @@ public class OrderServiceImpl implements OrderService {
             ChiTietSanPham chiTiet = chiTietSanPhamRepo.findById(item.getProductId())
                     .orElseThrow(() -> new RuntimeException("Sản phẩm không tồn tại: " + item.getProductId()));
 
-            if (chiTiet.getTonKho() < item.getQuantity()) {
+            String key = "TON_KHO:" + chiTiet.getId();
+            String tonKhoStr = redisTemplate.opsForValue().get(key);
+            Integer tonKhoRedis = (tonKhoStr != null) ? Integer.parseInt(tonKhoStr) : null;
+
+            if (tonKhoRedis == null || tonKhoRedis < item.getQuantity()) {
                 throw new RuntimeException("Không đủ hàng cho sản phẩm: " + chiTiet.getId());
             }
+            redisTemplate.opsForValue().decrement(key, item.getQuantity());
+
 
             ChiTietDonHang chiTietDonHang = new ChiTietDonHang();
             chiTietDonHang.setChiTietSanPham(chiTiet);

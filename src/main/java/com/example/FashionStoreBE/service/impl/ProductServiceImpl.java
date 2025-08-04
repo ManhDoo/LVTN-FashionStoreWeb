@@ -11,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private ColorProductRepository colorProductRepository;
+
+    @Autowired
+    private RedisTemplate<String, Integer> redisTemplate;
 
 
     @Override
@@ -298,6 +302,10 @@ public class ProductServiceImpl implements ProductService {
                     }
 
                     productDetailRopository.save(existingChiTiet);
+
+                    // ✅ Cập nhật tồn kho vào Redis sau khi cập nhật DB
+                    String redisKey = "TON_KHO:" + existingChiTiet.getId();
+                    redisTemplate.opsForValue().set(redisKey, existingChiTiet.getTonKho());
                 } else {
                     throw new Exception("Chi tiết sản phẩm không tồn tại với id: " + updatedChiTiet.getId());
                 }

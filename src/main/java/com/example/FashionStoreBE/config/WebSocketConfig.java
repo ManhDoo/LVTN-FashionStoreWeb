@@ -21,6 +21,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Đăng ký endpoint WebSocket mà client sẽ kết nối
-        registry.addEndpoint("/ws").setAllowedOrigins("https://lvtn-fashion-store-web-fe-9qyp.vercel.app").withSockJS();
+//        registry.addEndpoint("/ws").setAllowedOrigins("https://lvtn-fashion-store-web-fe-9qyp.vercel.app").withSockJS();
+        registry.addEndpoint("/ws").setAllowedOrigins("http://localhost:5173").withSockJS();
+
     }
 }
